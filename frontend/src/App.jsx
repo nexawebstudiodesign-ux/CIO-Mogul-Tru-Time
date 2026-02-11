@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 
+const currentMonth = '2026-02'
 
 const initialUsers = [
   {
@@ -292,6 +293,16 @@ function App() {
   const loggedUser = users.find((user) => user.id === loggedUserId)
   const loggedUserAttendance = filteredAttendance.filter((record) => record.userId === loggedUserId)
   const loggedUserLeaves = filteredLeaves.filter((leave) => leave.userId === loggedUserId)
+  
+  const userTotalDays = loggedUserAttendance.length
+  const userTotalHours = loggedUserAttendance.reduce((sum, record) => sum + record.hours, 0)
+  const userAvgHours = userTotalDays ? (userTotalHours / userTotalDays).toFixed(1) : 0
+  const userComplianceDays = loggedUserAttendance.filter((rec) => rec.hours >= 9).length
+  const userComplianceRate = userTotalDays ? Math.round((userComplianceDays / userTotalDays) * 100) : 0
+  const userTotalMails = loggedUserAttendance.reduce((sum, rec) => sum + rec.mails, 0)
+  const userTotalData = loggedUserAttendance.reduce((sum, rec) => sum + rec.data, 0)
+  const userTotalLinkedin = loggedUserAttendance.reduce((sum, rec) => sum + rec.linkedin, 0)
+  const userTotalFollowUps = loggedUserAttendance.reduce((sum, rec) => sum + rec.followUps, 0)
 
   const handlePasswordSubmit = (event) => {
     event.preventDefault()
@@ -354,7 +365,7 @@ function App() {
 
   const handleLoginSubmit = (event) => {
     event.preventDefault()
-    const sampleId = 'CIO-0001'
+    const sampleId = 'CIO-0003'
     const samplePassword = 'Welcome@123'
     if (loginInput.employeeId === sampleId && loginInput.password === samplePassword) {
       setLoginError('')
@@ -847,10 +858,47 @@ function App() {
       <>
         <style>{`
           @media print {
+            @page { 
+              margin: 0.25in 0.4in; 
+              size: A4 portrait;
+            }
             .no-print { display: none !important; }
-            body { background: white; }
-            .salary-slip-container { box-shadow: none; padding: 20px; }
-            .font-signature { font-family: 'Brush Script MT', cursive; }
+            body { 
+              background: white; 
+              margin: 0;
+              padding: 0;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            * {
+              page-break-inside: avoid;
+              break-inside: avoid;
+            }
+            .salary-slip-container { 
+              box-shadow: none !important; 
+              padding: 8px 16px !important;
+              margin: 0 !important;
+              border-radius: 0 !important;
+              page-break-inside: avoid;
+              break-inside: avoid;
+              display: block !important;
+            }
+            .print-reduce { 
+              margin-top: 8px !important; 
+              margin-bottom: 8px !important; 
+            }
+            .print-reduce-sm { 
+              margin-top: 6px !important; 
+              margin-bottom: 6px !important; 
+            }
+            .print-text { font-size: 10px !important; line-height: 1.3 !important; }
+            .print-heading { font-size: 14px !important; line-height: 1.2 !important; }
+            .font-signature { 
+              font-family: 'Brush Script MT', cursive; 
+              font-size: 20px !important;
+            }
+            h1, h2, h3 { margin: 4px 0 !important; }
+            .space-y-2 > * + * { margin-top: 4px !important; }
           }
           .font-signature { 
             font-family: 'Brush Script MT', 'Lucida Handwriting', cursive; 
@@ -905,87 +953,80 @@ function App() {
               </div>
             ) : (
               <div className="salary-slip-container glass-panel rounded-3xl p-8 shadow-lift">
-                {!monthlySalary && (
-                  <div className="no-print mb-4 rounded-lg bg-yellow-50 border border-yellow-200 px-4 py-3">
-                    <p className="text-sm text-yellow-800">
-                      📋 Showing default salary structure. Admin has not set specific salary for {monthYear}.
-                    </p>
-                  </div>
-                )}
-                <div className="border-b border-sand-200 pb-6">
-                  <div className="text-center mb-6">
-                    <h2 className="text-2xl font-bold text-brand-600">CIO MOGUL GLOBAL PUBLICATION PRIVATE LIMITED</h2>
-                    <p className="text-xs text-ink-400 mt-2">UAN: U58132MH2025PTC459494</p>
-                    <p className="text-xs text-ink-400 mt-1">
+                <div className="border-b border-sand-200 pb-3 print-reduce-sm">
+                  <div className="text-center mb-3">
+                    <h2 className="text-lg font-bold text-brand-600 print-heading">CIO MOGUL GLOBAL PUBLICATION PRIVATE LIMITED</h2>
+                    <p className="text-[10px] text-ink-400 mt-0.5 print-text">UAN: U58132MH2025PTC459494</p>
+                    <p className="text-[10px] text-ink-400 mt-0.5 print-text">
                       Sno. 80/1 Sai Nagari Bld, B/iwadmukhwadi Bhosari, Punawale, Pune, Pune City, Maharashtra, India, 411033
                     </p>
                   </div>
-                  <div className="flex items-start justify-between">
+                  <div className="flex items-start justify-between text-xs print-text">
                     <div>
-                      <p className="text-sm uppercase tracking-[0.3em] text-ink-300">Salary Slip</p>
-                      <h1 className="mt-2 text-2xl font-bold text-ink-500">{monthYear}</h1>
+                      <p className="text-[10px] uppercase tracking-wide text-ink-300">Salary Slip</p>
+                      <h1 className="mt-0.5 text-lg font-bold text-ink-500 print-heading">{monthYear}</h1>
                     </div>
-                    <div className="text-right text-sm">
-                      <p className="text-xs text-ink-300">Employee Details</p>
-                      <p className="font-semibold text-ink-500 mt-1">{loggedUser.name}</p>
-                      <p className="text-ink-300">{loggedUser.id}</p>
-                      <p className="text-ink-300">{loggedUser.email}</p>
+                    <div className="text-right">
+                      <p className="text-[10px] text-ink-300">Employee Details</p>
+                      <p className="font-semibold text-xs mt-0.5">{loggedUser.name}</p>
+                      <p className="text-ink-300 text-[10px]">{loggedUser.id}</p>
+                      <p className="text-ink-300 text-[10px]">{loggedUser.email}</p>
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-6 rounded-2xl border border-sand-200 overflow-hidden">
-                  <div className="bg-sand-50 px-4 py-2">
-                    <h3 className="text-sm font-semibold text-ink-500">Salary Details</h3>
+                <div className="mt-3 rounded-xl border border-sand-200 overflow-hidden print-reduce-sm">
+                  <div className="bg-sand-50 px-3 py-1">
+                    <h3 className="text-xs font-semibold text-ink-500 print-text">Salary Details</h3>
                   </div>
                   <div className="bg-white">
                     <div className="grid grid-cols-2 border-b border-sand-100">
-                      <div className="px-4 py-2 text-xs text-ink-400 border-r border-sand-100">Pay Period</div>
-                      <div className="px-4 py-2 text-sm font-semibold text-ink-500">{monthYear}</div>
+                      <div className="px-3 py-1 text-[10px] text-ink-400 border-r border-sand-100 print-text">Pay Period</div>
+                      <div className="px-3 py-1 text-xs font-semibold text-ink-500 print-text">{monthYear}</div>
                     </div>
                     <div className="grid grid-cols-2 border-b border-sand-100">
-                      <div className="px-4 py-2 text-xs text-ink-400 border-r border-sand-100">Working Days</div>
-                      <div className="px-4 py-2 text-sm font-semibold text-ink-500">{monthlySalary?.workingDays || 22} days</div>
+                      <div className="px-3 py-1 text-[10px] text-ink-400 border-r border-sand-100 print-text">Working Days</div>
+                      <div className="px-3 py-1 text-xs font-semibold text-ink-500 print-text">{monthlySalary?.workingDays || 22} days</div>
                     </div>
                     <div className="grid grid-cols-2 border-b border-sand-100">
-                      <div className="px-4 py-2 text-xs text-ink-400 border-r border-sand-100">Days Attended</div>
-                      <div className="px-4 py-2 text-sm font-semibold text-ink-500">{totalDays} days</div>
+                      <div className="px-3 py-1 text-[10px] text-ink-400 border-r border-sand-100 print-text">Days Attended</div>
+                      <div className="px-3 py-1 text-xs font-semibold text-ink-500 print-text">{totalDays} days</div>
                     </div>
                     <div className="grid grid-cols-2">
-                      <div className="px-4 py-2 text-xs text-ink-400 border-r border-sand-100">Generated On</div>
-                      <div className="px-4 py-2 text-sm font-semibold text-ink-500">{new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
+                      <div className="px-3 py-1 text-[10px] text-ink-400 border-r border-sand-100 print-text">Generated On</div>
+                      <div className="px-3 py-1 text-xs font-semibold text-ink-500 print-text">{new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
                     </div>
                   </div>
                 </div>
 
-              <div className="mt-8 grid gap-8 md:grid-cols-2">
+              <div className="mt-4 grid gap-4 md:grid-cols-2 print-reduce">
                 <div>
-                  <h2 className="text-lg font-bold text-ink-500">Earnings</h2>
-                  <div className="mt-4 space-y-3">
-                    <div className="flex justify-between text-sm">
+                  <h2 className="text-sm font-bold text-ink-500 print-text">Earnings</h2>
+                  <div className="mt-2 space-y-1.5">
+                    <div className="flex justify-between text-xs print-text">
                       <span className="text-ink-400">Basic Salary</span>
                       <span className="font-semibold text-ink-500">₹{baseSalary.toLocaleString()}</span>
                     </div>
-                    <div className="flex justify-between text-sm">
+                    <div className="flex justify-between text-xs print-text">
                       <span className="text-ink-400">HRA</span>
                       <span className="font-semibold text-ink-500">₹{hra.toLocaleString()}</span>
                     </div>
-                    <div className="flex justify-between text-sm">
+                    <div className="flex justify-between text-xs print-text">
                       <span className="text-ink-400">Transport Allowance</span>
                       <span className="font-semibold text-ink-500">₹{transportAllowance.toLocaleString()}</span>
                     </div>
-                    <div className="flex justify-between text-sm">
+                    <div className="flex justify-between text-xs print-text">
                       <span className="text-ink-400">Other Allowance</span>
                       <span className="font-semibold text-ink-500">₹{otherAllowance.toLocaleString()}</span>
                     </div>
                     {performanceBonus > 0 && (
-                      <div className="flex justify-between rounded-lg bg-green-50 px-3 py-2 text-sm">
+                      <div className="flex justify-between rounded bg-green-50 px-2 py-1 text-xs print-text">
                         <span className="font-semibold text-green-700">Performance Bonus</span>
                         <span className="font-bold text-green-900">₹{performanceBonus.toLocaleString()}</span>
                       </div>
                     )}
-                    <div className="border-t border-sand-200 pt-3">
-                      <div className="flex justify-between font-bold">
+                    <div className="border-t border-sand-200 pt-1.5 mt-1.5">
+                      <div className="flex justify-between font-bold text-xs print-text">
                         <span className="text-ink-500">Gross Earnings</span>
                         <span className="text-brand-600">₹{grossEarnings.toLocaleString()}</span>
                       </div>
@@ -994,22 +1035,22 @@ function App() {
                 </div>
 
                 <div>
-                  <h2 className="text-lg font-bold text-ink-500">Deductions</h2>
-                  <div className="mt-4 space-y-3">
-                    <div className="flex justify-between text-sm">
+                  <h2 className="text-sm font-bold text-ink-500 print-text">Deductions</h2>
+                  <div className="mt-2 space-y-1.5">
+                    <div className="flex justify-between text-xs print-text">
                       <span className="text-ink-400">Provident Fund (PF)</span>
                       <span className="font-semibold text-ink-500">₹{pfDeduction.toLocaleString()}</span>
                     </div>
-                    <div className="flex justify-between text-sm">
+                    <div className="flex justify-between text-xs print-text">
                       <span className="text-ink-400">Tax Deduction (TDS)</span>
                       <span className="font-semibold text-ink-500">₹{taxDeduction.toLocaleString()}</span>
                     </div>
-                    <div className="flex justify-between text-sm">
+                    <div className="flex justify-between text-xs print-text">
                       <span className="text-ink-400">Other Deductions</span>
                       <span className="font-semibold text-ink-500">₹{otherDeduction.toLocaleString()}</span>
                     </div>
-                    <div className="border-t border-sand-200 pt-3">
-                      <div className="flex justify-between font-bold">
+                    <div className="border-t border-sand-200 pt-1.5 mt-1.5">
+                      <div className="flex justify-between font-bold text-xs print-text">
                         <span className="text-ink-500">Total Deductions</span>
                         <span className="text-red-600">₹{totalDeductions.toLocaleString()}</span>
                       </div>
@@ -1018,74 +1059,27 @@ function App() {
                 </div>
               </div>
 
-              <div className="mt-8 rounded-2xl bg-brand-50 p-6">
+              <div className="mt-4 rounded-xl bg-brand-50 p-3 print-reduce-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-lg font-bold text-ink-500">Net Salary</span>
-                  <span className="text-2xl font-bold text-brand-600">₹{netSalary.toLocaleString()}</span>
+                  <span className="text-sm font-bold text-ink-500 print-text">Net Salary</span>
+                  <span className="text-lg font-bold text-brand-600 print-heading">₹{netSalary.toLocaleString()}</span>
                 </div>
               </div>
 
-              <div className="mt-8 border-t border-sand-200 pt-8">
-                <h2 className="text-lg font-bold text-ink-500">Performance Summary</h2>
-                <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  <div className="rounded-xl border border-sand-200 bg-white/50 p-4">
-                    <p className="text-xs uppercase tracking-wide text-ink-300">Days Worked</p>
-                    <p className="mt-1 text-2xl font-bold text-ink-500">{totalDays}</p>
-                  </div>
-                  <div className="rounded-xl border border-sand-200 bg-white/50 p-4">
-                    <p className="text-xs uppercase tracking-wide text-ink-300">Avg Hours/Day</p>
-                    <p className="mt-1 text-2xl font-bold text-ink-500">{avgHours}</p>
-                  </div>
-                  <div className="rounded-xl border border-sand-200 bg-white/50 p-4">
-                    <p className="text-xs uppercase tracking-wide text-ink-300">Compliance</p>
-                    <p className="mt-1 text-2xl font-bold text-brand-600">{complianceRate}%</p>
-                  </div>
-                  <div className="rounded-xl border border-sand-200 bg-white/50 p-4">
-                    <p className="text-xs uppercase tracking-wide text-ink-300">Total Hours</p>
-                    <p className="mt-1 text-2xl font-bold text-ink-500">{totalHours.toFixed(1)}</p>
-                  </div>
-                </div>
-
-                <div className="mt-6">
-                  <h3 className="text-sm font-semibold text-ink-500">Productivity Metrics</h3>
-                  <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    <div className="rounded-lg bg-blue-50 px-4 py-3">
-                      <p className="text-xs text-blue-700">Mails Processed</p>
-                      <p className="mt-1 text-xl font-bold text-blue-900">{totalMails}</p>
-                    </div>
-                    <div className="rounded-lg bg-green-50 px-4 py-3">
-                      <p className="text-xs text-green-700">Data Entries</p>
-                      <p className="mt-1 text-xl font-bold text-green-900">{totalData}</p>
-                    </div>
-                    <div className="rounded-lg bg-purple-50 px-4 py-3">
-                      <p className="text-xs text-purple-700">LinkedIn Activities</p>
-                      <p className="mt-1 text-xl font-bold text-purple-900">{totalLinkedin}</p>
-                    </div>
-                    <div className="rounded-lg bg-orange-50 px-4 py-3">
-                      <p className="text-xs text-orange-700">Follow-ups</p>
-                      <p className="mt-1 text-xl font-bold text-orange-900">{totalFollowUps}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-8 border-t border-sand-200 pt-6">
-                <div className="flex justify-end mb-6">
+              <div className="mt-3 border-t border-sand-200 pt-3 print-reduce-sm">
+                <div className="flex justify-end mb-2">
                   <div className="text-center">
-                    <div className="mb-2 text-lg font-bold text-brand-600">CIO MOGUL GLOBAL PUBLICATION PVT. LTD.</div>
-                    <div className="border-2 border-brand-400 rounded-lg px-8 py-4 bg-white relative">
-                      <div className="text-3xl font-signature text-brand-600 transform -rotate-6 mb-2">Signature</div>
-                      <div className="text-sm font-semibold text-ink-500">Director</div>
+                    <div className="mb-1 text-xs font-bold text-brand-600 print-text">CIO MOGUL GLOBAL PUBLICATION PVT. LTD.</div>
+                    <div className="border-2 border-brand-400 rounded px-4 py-2 bg-white">
+                      <img src="/signature.png" alt="Director Signature" className="h-12 mx-auto" style={{filter: 'brightness(0) saturate(100%) invert(32%) sepia(88%) saturate(1893%) hue-rotate(221deg) brightness(96%) contrast(95%)'}} />
+                      <div className="text-[10px] font-semibold text-ink-500 print-text mt-1">Director</div>
                     </div>
                   </div>
                 </div>
-                <div className="text-center text-xs text-ink-300 space-y-1">
+                <div className="text-center text-[9px] text-ink-300 space-y-0 print-text">
                   <p className="font-semibold text-ink-400">CIO MOGUL GLOBAL PUBLICATION PRIVATE LIMITED</p>
-                  <p>UAN: U58132MH2025PTC459494</p>
-                  <p>Sno. 80/1 Sai Nagari Bld, B/iwadmukhwadi Bhosari, Punawale, Pune, Pune City,</p>
-                  <p>Maharashtra, India, 411033</p>
-                  <p className="mt-3 text-ink-300">This is a system-generated salary slip.</p>
-                  <p>For queries, contact HR at hr@ciomogul.com</p>
+                  <p>UAN: U58132MH2025PTC459494 | Sno. 80/1 Sai Nagari Bld, Punawale, Pune - 411033</p>
+                  <p className="text-ink-300">This is a system-generated salary slip. For queries: info@theciomogul.com</p>
                 </div>
               </div>
               </div>
@@ -1183,6 +1177,50 @@ function App() {
                 />
               </div>
             </div>
+            </div>
+          </div>
+
+          <div className="mt-8 glass-panel rounded-3xl p-6 shadow-lift">
+            <h2 className="text-xl font-bold text-ink-500">Performance Summary</h2>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-xl border border-sand-200 bg-white/50 p-4">
+                <p className="text-xs uppercase tracking-wide text-ink-300">Days Worked</p>
+                <p className="mt-1 text-2xl font-bold text-ink-500">{userTotalDays}</p>
+              </div>
+              <div className="rounded-xl border border-sand-200 bg-white/50 p-4">
+                <p className="text-xs uppercase tracking-wide text-ink-300">Avg Hours/Day</p>
+                <p className="mt-1 text-2xl font-bold text-ink-500">{userAvgHours}</p>
+              </div>
+              <div className="rounded-xl border border-sand-200 bg-white/50 p-4">
+                <p className="text-xs uppercase tracking-wide text-ink-300">Compliance</p>
+                <p className="mt-1 text-2xl font-bold text-brand-600">{userComplianceRate}%</p>
+              </div>
+              <div className="rounded-xl border border-sand-200 bg-white/50 p-4">
+                <p className="text-xs uppercase tracking-wide text-ink-300">Total Hours</p>
+                <p className="mt-1 text-2xl font-bold text-ink-500">{userTotalHours.toFixed(1)}</p>
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <h3 className="text-sm font-semibold text-ink-500">Productivity Metrics</h3>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-lg bg-blue-50 px-4 py-3">
+                  <p className="text-xs text-blue-700">Mails Processed</p>
+                  <p className="mt-1 text-xl font-bold text-blue-900">{userTotalMails}</p>
+                </div>
+                <div className="rounded-lg bg-green-50 px-4 py-3">
+                  <p className="text-xs text-green-700">Data Entries</p>
+                  <p className="mt-1 text-xl font-bold text-green-900">{userTotalData}</p>
+                </div>
+                <div className="rounded-lg bg-purple-50 px-4 py-3">
+                  <p className="text-xs text-purple-700">LinkedIn Activities</p>
+                  <p className="mt-1 text-xl font-bold text-purple-900">{userTotalLinkedin}</p>
+                </div>
+                <div className="rounded-lg bg-orange-50 px-4 py-3">
+                  <p className="text-xs text-orange-700">Follow-ups</p>
+                  <p className="mt-1 text-xl font-bold text-orange-900">{userTotalFollowUps}</p>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -1840,7 +1878,6 @@ function App() {
                   className="input-field mt-1"
                   type="number"
                   placeholder="22"
-                  required
                   min="1"
                   max="31"
                   value={salaryForm.workingDays}
@@ -1856,7 +1893,6 @@ function App() {
                   className="input-field mt-1"
                   type="number"
                   placeholder="50000"
-                  required
                   min="0"
                   step="0.01"
                   value={salaryForm.baseSalary}
@@ -1872,7 +1908,6 @@ function App() {
                   className="input-field mt-1"
                   type="number"
                   placeholder="15000"
-                  required
                   min="0"
                   step="0.01"
                   value={salaryForm.hra}
@@ -1886,7 +1921,6 @@ function App() {
                   className="input-field mt-1"
                   type="number"
                   placeholder="3000"
-                  required
                   min="0"
                   step="0.01"
                   value={salaryForm.transportAllowance}
@@ -1902,7 +1936,6 @@ function App() {
                   className="input-field mt-1"
                   type="number"
                   placeholder="2000"
-                  required
                   min="0"
                   step="0.01"
                   value={salaryForm.otherAllowance}
@@ -1918,7 +1951,6 @@ function App() {
                   className="input-field mt-1"
                   type="number"
                   placeholder="0"
-                  required
                   min="0"
                   step="0.01"
                   value={salaryForm.performanceBonus}
@@ -1934,7 +1966,6 @@ function App() {
                   className="input-field mt-1"
                   type="number"
                   placeholder="6000"
-                  required
                   min="0"
                   step="0.01"
                   value={salaryForm.pfDeduction}
@@ -1950,7 +1981,6 @@ function App() {
                   className="input-field mt-1"
                   type="number"
                   placeholder="5000"
-                  required
                   min="0"
                   step="0.01"
                   value={salaryForm.taxDeduction}
@@ -1966,7 +1996,6 @@ function App() {
                   className="input-field mt-1"
                   type="number"
                   placeholder="0"
-                  required
                   min="0"
                   step="0.01"
                   value={salaryForm.otherDeduction}
