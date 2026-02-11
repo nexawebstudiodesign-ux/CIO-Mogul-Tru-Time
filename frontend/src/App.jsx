@@ -988,13 +988,9 @@ function App() {
                       <div className="px-3 py-1 text-[10px] text-ink-400 border-r border-sand-100 print-text">Working Days</div>
                       <div className="px-3 py-1 text-xs font-semibold text-ink-500 print-text">{monthlySalary?.workingDays || 22} days</div>
                     </div>
-                    <div className="grid grid-cols-2 border-b border-sand-100">
+                    <div className="grid grid-cols-2">
                       <div className="px-3 py-1 text-[10px] text-ink-400 border-r border-sand-100 print-text">Days Attended</div>
                       <div className="px-3 py-1 text-xs font-semibold text-ink-500 print-text">{totalDays} days</div>
-                    </div>
-                    <div className="grid grid-cols-2">
-                      <div className="px-3 py-1 text-[10px] text-ink-400 border-r border-sand-100 print-text">Generated On</div>
-                      <div className="px-3 py-1 text-xs font-semibold text-ink-500 print-text">{new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
                     </div>
                   </div>
                 </div>
@@ -1071,7 +1067,16 @@ function App() {
                   <div className="text-center">
                     <div className="mb-1 text-xs font-bold text-brand-600 print-text">CIO MOGUL GLOBAL PUBLICATION PVT. LTD.</div>
                     <div className="border-2 border-brand-400 rounded px-4 py-2 bg-white">
-                      <img src="/signature.png" alt="Director Signature" className="h-12 mx-auto" style={{filter: 'brightness(0) saturate(100%) invert(32%) sepia(88%) saturate(1893%) hue-rotate(221deg) brightness(96%) contrast(95%)'}} />
+                      <img 
+                        src="/signature.png" 
+                        alt="Director Signature" 
+                        className="h-16 mx-auto"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          e.target.nextElementSibling.style.display = 'block';
+                        }}
+                      />
+                      <div className="text-xl font-signature text-brand-600 transform -rotate-6" style={{display: 'none'}}>Signature</div>
                       <div className="text-[10px] font-semibold text-ink-500 print-text mt-1">Director</div>
                     </div>
                   </div>
