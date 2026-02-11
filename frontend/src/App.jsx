@@ -1,10 +1,43 @@
 import { useEffect, useMemo, useState } from 'react'
 
+
 const initialUsers = [
-  { id: 'CIO-0001', name: 'Anita Rao', email: 'anita@ciomogul.com', status: 'Active', leave: 12 },
-  { id: 'CIO-0002', name: 'Kunal Mehta', email: 'kunal@ciomogul.com', status: 'Active', leave: 8 },
-  { id: 'CIO-0003', name: 'Riya Nair', email: 'riya@ciomogul.com', status: 'Inactive', leave: 5 },
-  { id: 'CIO-0004', name: 'Vikram Shah', email: 'vikram@ciomogul.com', status: 'Active', leave: 14 },
+  {
+    id: 'CIO-0001',
+    name: 'Anita Rao',
+    email: 'anita@ciomogul.com',
+    status: 'Active',
+    casualBalance: 12,
+    sickBalance: 12,
+    sickBaseMonth: currentMonth,
+  },
+  {
+    id: 'CIO-0002',
+    name: 'Kunal Mehta',
+    email: 'kunal@ciomogul.com',
+    status: 'Active',
+    casualBalance: 12,
+    sickBalance: 12,
+    sickBaseMonth: currentMonth,
+  },
+  {
+    id: 'CIO-0003',
+    name: 'Riya Nair',
+    email: 'riya@ciomogul.com',
+    status: 'Inactive',
+    casualBalance: 10,
+    sickBalance: 12,
+    sickBaseMonth: currentMonth,
+  },
+  {
+    id: 'CIO-0004',
+    name: 'Vikram Shah',
+    email: 'vikram@ciomogul.com',
+    status: 'Active',
+    casualBalance: 12,
+    sickBalance: 12,
+    sickBaseMonth: currentMonth,
+  },
 ]
 
 const initialLeaves = [
@@ -50,7 +83,7 @@ const initialLeaves = [
   },
 ]
 
-const attendance = [
+const initialAttendance = [
   { userId: 'CIO-0001', date: '2026-02-01', hours: 9.2, mails: 210, data: 48, linkedin: 34, followUps: 9 },
   { userId: 'CIO-0001', date: '2026-02-02', hours: 8.4, mails: 180, data: 45, linkedin: 28, followUps: 7 },
   { userId: 'CIO-0001', date: '2026-02-03', hours: 9.0, mails: 240, data: 52, linkedin: 36, followUps: 10 },
@@ -65,12 +98,11 @@ const attendance = [
   { userId: 'CIO-0004', date: '2026-01-20', hours: 9.1, mails: 190, data: 49, linkedin: 32, followUps: 8 },
 ]
 
-const currentMonth = new Date().toISOString().slice(0, 7)
-
 function App() {
   const currentPath = window.location.pathname.toLowerCase()
   const isDashboardRoute = currentPath === '/dashboard'
   const isLoginRoute = currentPath === '/login'
+  const isUserRoute = currentPath === '/user'
   const requiredPassword = import.meta.env.VITE_DASHBOARD_PASSWORD || 'ciomogul'
   const [passwordInput, setPasswordInput] = useState('')
   const [authError, setAuthError] = useState('')
@@ -81,20 +113,39 @@ function App() {
   const [loginError, setLoginError] = useState('')
   const [users, setUsers] = useState(initialUsers)
   const [leaves, setLeaves] = useState(initialLeaves)
+  const [attendance, setAttendance] = useState(initialAttendance)
   const [selectedMonth, setSelectedMonth] = useState(currentMonth)
   const [selectedUserId, setSelectedUserId] = useState(initialUsers[0].id)
   const [selectedLeaveId, setSelectedLeaveId] = useState(initialLeaves[0]?.id ?? '')
   const [showUserModal, setShowUserModal] = useState(false)
   const [showLeaveModal, setShowLeaveModal] = useState(false)
   const [modalMode, setModalMode] = useState('add')
-  const [userForm, setUserForm] = useState({ name: '', email: '', password: '', leaveBalance: '' })
+  const [userForm, setUserForm] = useState({
+    name: '',
+    email: '',
+    password: '',
+    casualBalance: '',
+    sickBalance: '',
+  })
   const [userFormErrors, setUserFormErrors] = useState({})
   const [leaveForm, setLeaveForm] = useState({ userId: '', type: 'Casual', from: '', to: '', reason: '' })
   const [leaveFormErrors, setLeaveFormErrors] = useState({})
+  const [userAttendanceForm, setUserAttendanceForm] = useState({
+    date: '',
+    login: '',
+    logout: '',
+    mails: '',
+    data: '',
+    linkedin: '',
+    followUps: '',
+  })
+  const [userAttendanceErrors, setUserAttendanceErrors] = useState({})
+  const [userLeaveForm, setUserLeaveForm] = useState({ type: 'Casual', from: '', to: '', reason: '' })
+  const [userLeaveErrors, setUserLeaveErrors] = useState({})
 
   const filteredAttendance = useMemo(
     () => attendance.filter((record) => record.date.startsWith(selectedMonth)),
-    [selectedMonth],
+    [attendance, selectedMonth],
   )
 
   const userAttendance = useMemo(
@@ -104,7 +155,7 @@ function App() {
 
   const filteredLeaves = useMemo(
     () => leaves.filter((leave) => leave.from.startsWith(selectedMonth)),
-    [selectedMonth],
+    [leaves, selectedMonth],
   )
 
   const userLeaves = useMemo(
@@ -145,9 +196,13 @@ function App() {
         compliance,
       }
     })
-  }, [filteredAttendance])
+  }, [filteredAttendance, users])
 
   const selectedUser = users.find((user) => user.id === selectedUserId)
+  const loggedUserId = localStorage.getItem('ciomogul_user_id') || ''
+  const loggedUser = users.find((user) => user.id === loggedUserId)
+  const loggedUserAttendance = filteredAttendance.filter((record) => record.userId === loggedUserId)
+  const loggedUserLeaves = filteredLeaves.filter((leave) => leave.userId === loggedUserId)
 
   const handlePasswordSubmit = (event) => {
     event.preventDefault()
@@ -164,7 +219,7 @@ function App() {
     setModalMode(mode)
     setUserFormErrors({})
     if (mode === 'add') {
-      setUserForm({ name: '', email: '', password: '', leaveBalance: '' })
+      setUserForm({ name: '', email: '', password: '', casualBalance: '12', sickBalance: '12' })
     }
     if (mode === 'edit') {
       const user = users.find((item) => item.id === selectedUserId)
@@ -173,7 +228,8 @@ function App() {
           name: user.name,
           email: user.email,
           password: '',
-          leaveBalance: String(user.leave ?? 0),
+          casualBalance: String(user.casualBalance ?? 12),
+          sickBalance: String(user.sickBalance ?? 12),
         })
       }
     }
@@ -213,10 +269,117 @@ function App() {
     const samplePassword = 'Welcome@123'
     if (loginInput.employeeId === sampleId && loginInput.password === samplePassword) {
       setLoginError('')
-      window.location.href = '/dashboard'
+      localStorage.setItem('ciomogul_user_id', sampleId)
+      window.location.href = '/user'
       return
     }
     setLoginError('Invalid credentials. Try the sample login below.')
+  }
+
+  const validateUserAttendance = () => {
+    const errors = {}
+    if (!userAttendanceForm.date) {
+      errors.date = 'Date is required.'
+    }
+    if (!userAttendanceForm.login) {
+      errors.login = 'Login time is required.'
+    }
+    if (!userAttendanceForm.logout) {
+      errors.logout = 'Logout time is required.'
+    }
+    if (userAttendanceForm.login && userAttendanceForm.logout) {
+      const loginDate = new Date(`1970-01-01T${userAttendanceForm.login}:00`)
+      const logoutDate = new Date(`1970-01-01T${userAttendanceForm.logout}:00`)
+      if (logoutDate <= loginDate) {
+        errors.logout = 'Logout must be after login.'
+      }
+    }
+    if (userAttendanceForm.mails === '' || Number.isNaN(Number(userAttendanceForm.mails))) {
+      errors.mails = 'Mails count is required.'
+    }
+    if (userAttendanceForm.data === '' || Number.isNaN(Number(userAttendanceForm.data))) {
+      errors.data = 'Data count is required.'
+    }
+    if (userAttendanceForm.linkedin === '' || Number.isNaN(Number(userAttendanceForm.linkedin))) {
+      errors.linkedin = 'LinkedIn count is required.'
+    }
+    if (userAttendanceForm.followUps === '' || Number.isNaN(Number(userAttendanceForm.followUps))) {
+      errors.followUps = 'Follow ups are required.'
+    }
+    return errors
+  }
+
+  const validateUserLeave = () => {
+    const errors = {}
+    if (!userLeaveForm.from) {
+      errors.from = 'From date is required.'
+    }
+    if (!userLeaveForm.to) {
+      errors.to = 'To date is required.'
+    }
+    if (userLeaveForm.from && userLeaveForm.to && userLeaveForm.to < userLeaveForm.from) {
+      errors.to = 'To date must be after From date.'
+    }
+    if (!userLeaveForm.reason.trim()) {
+      errors.reason = 'Reason is required.'
+    }
+    return errors
+  }
+
+  const handleUserAttendanceSubmit = (event, overrideLogout) => {
+    event.preventDefault()
+    const effectiveLogin = userAttendanceForm.login
+    const effectiveLogout = overrideLogout || userAttendanceForm.logout
+    const errors = validateUserAttendance()
+    setUserAttendanceErrors(errors)
+    if (Object.keys(errors).length > 0) {
+      return
+    }
+    const loginDate = new Date(`1970-01-01T${effectiveLogin}:00`)
+    const logoutDate = new Date(`1970-01-01T${effectiveLogout}:00`)
+    const hours = Math.round(((logoutDate - loginDate) / 3600000) * 10) / 10
+    const newRecord = {
+      userId: loggedUserId,
+      date: userAttendanceForm.date,
+      hours,
+      mails: Number(userAttendanceForm.mails),
+      data: Number(userAttendanceForm.data),
+      linkedin: Number(userAttendanceForm.linkedin),
+      followUps: Number(userAttendanceForm.followUps),
+    }
+    setAttendance((prev) => [newRecord, ...prev])
+    setUserAttendanceForm({
+      date: '',
+      login: '',
+      logout: '',
+      mails: '',
+      data: '',
+      linkedin: '',
+      followUps: '',
+    })
+  }
+
+
+  const handleUserLeaveSubmit = (event) => {
+    event.preventDefault()
+    const errors = validateUserLeave()
+    setUserLeaveErrors(errors)
+    if (Object.keys(errors).length > 0) {
+      return
+    }
+    const days = Math.round((new Date(userLeaveForm.to) - new Date(userLeaveForm.from)) / 86400000) + 1
+    const newLeave = {
+      id: getNextLeaveId(leaves),
+      userId: loggedUserId,
+      name: loggedUser?.name ?? 'User',
+      type: userLeaveForm.type,
+      from: userLeaveForm.from,
+      to: userLeaveForm.to,
+      days,
+      status: 'Pending',
+    }
+    setLeaves((prev) => [newLeave, ...prev])
+    setUserLeaveForm({ type: 'Casual', from: '', to: '', reason: '' })
   }
 
   const getNextEmployeeId = (list) => {
@@ -242,6 +405,23 @@ function App() {
     return `L-${String(max + 1).padStart(4, '0')}`
   }
 
+  const clampBalance = (value) => Math.min(12, Math.max(0, value))
+
+  const monthDiff = (fromMonth, toMonth) => {
+    const [fromYear, fromMon] = fromMonth.split('-').map(Number)
+    const [toYear, toMon] = toMonth.split('-').map(Number)
+    return (toYear - fromYear) * 12 + (toMon - fromMon)
+  }
+
+  const getEffectiveSickBalance = (user, month) => {
+    if (!user) {
+      return 0
+    }
+    const baseMonth = user.sickBaseMonth || month
+    const diff = Math.max(0, monthDiff(baseMonth, month))
+    return clampBalance(user.sickBalance - diff)
+  }
+
   const validateUserForm = (mode) => {
     const errors = {}
     if (!userForm.name.trim()) {
@@ -252,14 +432,18 @@ function App() {
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userForm.email)) {
       errors.email = 'Enter a valid email.'
     }
-    if (mode === 'add' && !userForm.password.trim()) {
+    if (!userForm.password.trim()) {
       errors.password = 'Password is required.'
-    } else if (userForm.password && userForm.password.length < 6) {
+    } else if (userForm.password.length < 6) {
       errors.password = 'Password must be at least 6 characters.'
     }
-    const balanceValue = userForm.leaveBalance === '' ? 0 : Number(userForm.leaveBalance)
-    if (Number.isNaN(balanceValue) || balanceValue < 0) {
-      errors.leaveBalance = 'Leave balance must be 0 or more.'
+    const casualValue = userForm.casualBalance === '' ? NaN : Number(userForm.casualBalance)
+    const sickValue = userForm.sickBalance === '' ? NaN : Number(userForm.sickBalance)
+    if (Number.isNaN(casualValue) || casualValue < 0 || casualValue > 12) {
+      errors.casualBalance = 'Casual leave must be between 0 and 12.'
+    }
+    if (Number.isNaN(sickValue) || sickValue < 0 || sickValue > 12) {
+      errors.sickBalance = 'Sick leave must be between 0 and 12.'
     }
     return errors
   }
@@ -297,7 +481,9 @@ function App() {
         name: userForm.name.trim(),
         email: userForm.email.trim(),
         status: 'Active',
-        leave: Number(userForm.leaveBalance || 0),
+        casualBalance: clampBalance(Number(userForm.casualBalance || 0)),
+        sickBalance: clampBalance(Number(userForm.sickBalance || 0)),
+        sickBaseMonth: selectedMonth,
       }
       setUsers((prev) => [newUser, ...prev])
       setSelectedUserId(newUser.id)
@@ -310,7 +496,9 @@ function App() {
                 ...user,
                 name: userForm.name.trim(),
                 email: userForm.email.trim(),
-                leave: Number(userForm.leaveBalance || 0),
+                casualBalance: clampBalance(Number(userForm.casualBalance || 0)),
+                sickBalance: clampBalance(Number(userForm.sickBalance || 0)),
+                sickBaseMonth: selectedMonth,
               }
             : user,
         ),
@@ -401,6 +589,7 @@ function App() {
               <input
                 className="input-field"
                 placeholder="Employee ID"
+                required
                 value={loginInput.employeeId}
                 onChange={(event) =>
                   setLoginInput((prev) => ({ ...prev, employeeId: event.target.value }))
@@ -410,6 +599,7 @@ function App() {
                 className="input-field"
                 type="password"
                 placeholder="Password"
+                required
                 value={loginInput.password}
                 onChange={(event) =>
                   setLoginInput((prev) => ({ ...prev, password: event.target.value }))
@@ -420,11 +610,281 @@ function App() {
                 Sign In
               </button>
             </form>
-            <div className="mt-6 rounded-2xl border border-sand-200 bg-white/70 p-4 text-sm text-ink-400">
-              <p className="text-xs uppercase tracking-[0.2em] text-ink-300">Sample login</p>
-              <p className="mt-2">Employee ID: <span className="font-semibold text-ink-500">CIO-0001</span></p>
-              <p>Password: <span className="font-semibold text-ink-500">Welcome@123</span></p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (isUserRoute) {
+    if (!loggedUser) {
+      return (
+        <div className="min-h-screen p-6 md:p-10">
+          <div className="mx-auto max-w-lg">
+            <div className="glass-panel rounded-3xl p-8 shadow-lift">
+              <p className="text-sm uppercase tracking-[0.3em] text-ink-300">CIO Mogul</p>
+              <h1 className="section-title mt-3">User Access</h1>
+              <p className="mt-2 text-sm text-ink-300">Please log in to view your dashboard.</p>
+              <a
+                className="mt-6 inline-flex items-center rounded-full bg-ink-500 px-5 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-sand-50"
+                href="/login"
+              >
+                Go to Login
+              </a>
             </div>
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <div className="min-h-screen p-6 md:p-10">
+        <div className="mx-auto max-w-5xl">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-sm uppercase tracking-[0.3em] text-ink-300">CIO Mogul</p>
+              <h1 className="section-title">User Dashboard</h1>
+              <p className="mt-2 text-sm text-ink-300">Welcome back, {loggedUser.name}.</p>
+            </div>
+            <div className="glass-panel rounded-2xl p-4 shadow-lift">
+              <div className="flex items-center justify-between gap-3 text-sm">
+                <span className="text-ink-300">Month</span>
+                <input
+                  type="month"
+                  className="rounded-lg border border-sand-200 bg-white/80 px-3 py-1 text-sm font-semibold text-ink-500"
+                  value={selectedMonth}
+                  onChange={(event) => setSelectedMonth(event.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-8 grid gap-6 lg:grid-cols-[1.1fr_1fr]">
+            <section className="glass-panel rounded-3xl p-6 shadow-lift">
+              <h2 className="section-title text-xl">Daily Tru Time Entry</h2>
+              <form className="mt-4 grid gap-3" onSubmit={handleUserAttendanceSubmit}>
+                <div>
+                  <input
+                    className="input-field"
+                    type="date"
+                    required
+                    value={userAttendanceForm.date}
+                    onChange={(event) =>
+                      setUserAttendanceForm((prev) => ({ ...prev, date: event.target.value }))
+                    }
+                  />
+                  {userAttendanceErrors.date && (
+                    <p className="mt-1 text-xs text-red-500">{userAttendanceErrors.date}</p>
+                  )}
+                </div>
+                <div>
+                  <input
+                    className="input-field"
+                    type="time"
+                    placeholder="Login time"
+                    required
+                    value={userAttendanceForm.login}
+                    onChange={(event) =>
+                      setUserAttendanceForm((prev) => ({ ...prev, login: event.target.value }))
+                    }
+                  />
+                  {userAttendanceErrors.login && (
+                    <p className="mt-1 text-xs text-red-500">{userAttendanceErrors.login}</p>
+                  )}
+                  <p className="mt-1 text-xs text-ink-300">Enter login time</p>
+                </div>
+                <div>
+                  <input
+                    className="input-field"
+                    type="time"
+                    placeholder="Logout time"
+                    required
+                    value={userAttendanceForm.logout}
+                    onChange={(event) =>
+                      setUserAttendanceForm((prev) => ({ ...prev, logout: event.target.value }))
+                    }
+                  />
+                  {userAttendanceErrors.logout && (
+                    <p className="mt-1 text-xs text-red-500">{userAttendanceErrors.logout}</p>
+                  )}
+                  <p className="mt-1 text-xs text-ink-300">Enter logout time</p>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <input
+                      className="input-field"
+                      placeholder="Mails"
+                      required
+                      value={userAttendanceForm.mails}
+                      onChange={(event) =>
+                        setUserAttendanceForm((prev) => ({ ...prev, mails: event.target.value }))
+                      }
+                    />
+                    {userAttendanceErrors.mails && (
+                      <p className="mt-1 text-xs text-red-500">{userAttendanceErrors.mails}</p>
+                    )}
+                  </div>
+                  <div>
+                    <input
+                      className="input-field"
+                      placeholder="Data"
+                      required
+                      value={userAttendanceForm.data}
+                      onChange={(event) =>
+                        setUserAttendanceForm((prev) => ({ ...prev, data: event.target.value }))
+                      }
+                    />
+                    {userAttendanceErrors.data && (
+                      <p className="mt-1 text-xs text-red-500">{userAttendanceErrors.data}</p>
+                    )}
+                  </div>
+                  <div>
+                    <input
+                      className="input-field"
+                      placeholder="LinkedIn"
+                      required
+                      value={userAttendanceForm.linkedin}
+                      onChange={(event) =>
+                        setUserAttendanceForm((prev) => ({ ...prev, linkedin: event.target.value }))
+                      }
+                    />
+                    {userAttendanceErrors.linkedin && (
+                      <p className="mt-1 text-xs text-red-500">{userAttendanceErrors.linkedin}</p>
+                    )}
+                  </div>
+                  <div>
+                    <input
+                      className="input-field"
+                      placeholder="Follow ups"
+                      required
+                      value={userAttendanceForm.followUps}
+                      onChange={(event) =>
+                        setUserAttendanceForm((prev) => ({ ...prev, followUps: event.target.value }))
+                      }
+                    />
+                    {userAttendanceErrors.followUps && (
+                      <p className="mt-1 text-xs text-red-500">{userAttendanceErrors.followUps}</p>
+                    )}
+                  </div>
+                </div>
+                <button className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white">
+                  Submit Tru Time
+                </button>
+              </form>
+            </section>
+
+            <section className="glass-panel rounded-3xl p-6 shadow-lift">
+              <h2 className="section-title text-xl">Apply Leave</h2>
+              <form className="mt-4 grid gap-3" onSubmit={handleUserLeaveSubmit}>
+                <select
+                  className="input-field"
+                  required
+                  value={userLeaveForm.type}
+                  onChange={(event) => setUserLeaveForm((prev) => ({ ...prev, type: event.target.value }))}
+                >
+                  <option>Casual</option>
+                  <option>Sick</option>
+                  <option>Paid</option>
+                </select>
+                <div>
+                  <input
+                    className="input-field"
+                    type="date"
+                    required
+                    value={userLeaveForm.from}
+                    onChange={(event) => setUserLeaveForm((prev) => ({ ...prev, from: event.target.value }))}
+                  />
+                  {userLeaveErrors.from && (
+                    <p className="mt-1 text-xs text-red-500">{userLeaveErrors.from}</p>
+                  )}
+                </div>
+                <div>
+                  <input
+                    className="input-field"
+                    type="date"
+                    required
+                    value={userLeaveForm.to}
+                    onChange={(event) => setUserLeaveForm((prev) => ({ ...prev, to: event.target.value }))}
+                  />
+                  {userLeaveErrors.to && (
+                    <p className="mt-1 text-xs text-red-500">{userLeaveErrors.to}</p>
+                  )}
+                </div>
+                <div>
+                  <input
+                    className="input-field"
+                    placeholder="Reason"
+                    required
+                    value={userLeaveForm.reason}
+                    onChange={(event) => setUserLeaveForm((prev) => ({ ...prev, reason: event.target.value }))}
+                  />
+                  {userLeaveErrors.reason && (
+                    <p className="mt-1 text-xs text-red-500">{userLeaveErrors.reason}</p>
+                  )}
+                </div>
+                <button className="rounded-xl bg-ink-500 px-4 py-2 text-sm font-semibold text-white">
+                  Apply Leave
+                </button>
+              </form>
+            </section>
+          </div>
+
+          <div className="mt-8 grid gap-6 lg:grid-cols-2">
+            <section className="glass-panel rounded-3xl p-6 shadow-lift">
+              <h3 className="text-sm font-semibold text-ink-500">My Tru Time Records</h3>
+              <div className="mt-3 overflow-hidden rounded-2xl border border-sand-200">
+                <div className="grid grid-cols-[0.9fr_0.6fr_0.7fr_0.7fr_0.7fr_0.7fr] bg-sand-50 px-4 py-3 text-xs uppercase tracking-[0.2em] text-ink-300">
+                  <span>Date</span>
+                  <span>Hours</span>
+                  <span>Mails</span>
+                  <span>Data</span>
+                  <span>LinkedIn</span>
+                  <span>Follow Ups</span>
+                </div>
+                {loggedUserAttendance.map((record) => (
+                  <div
+                    key={`${record.userId}-${record.date}`}
+                    className="grid grid-cols-[0.9fr_0.6fr_0.7fr_0.7fr_0.7fr_0.7fr] items-center border-t border-sand-100 px-4 py-3 text-sm"
+                  >
+                    <span className="font-semibold text-ink-500">{record.date}</span>
+                    <span className="text-ink-400">{record.hours.toFixed(1)}</span>
+                    <span className="text-ink-400">{record.mails}</span>
+                    <span className="text-ink-400">{record.data}</span>
+                    <span className="text-ink-400">{record.linkedin}</span>
+                    <span className="text-ink-400">{record.followUps}</span>
+                  </div>
+                ))}
+                {loggedUserAttendance.length === 0 && (
+                  <div className="px-4 py-6 text-sm text-ink-300">No Tru Time records for this month.</div>
+                )}
+              </div>
+            </section>
+
+            <section className="glass-panel rounded-3xl p-6 shadow-lift">
+              <h3 className="text-sm font-semibold text-ink-500">My Leave Requests</h3>
+              <div className="mt-3 overflow-hidden rounded-2xl border border-sand-200">
+                <div className="grid grid-cols-[1fr_0.8fr_0.6fr_0.6fr] bg-sand-50 px-4 py-3 text-xs uppercase tracking-[0.2em] text-ink-300">
+                  <span>Type</span>
+                  <span>Date Range</span>
+                  <span>Days</span>
+                  <span>Status</span>
+                </div>
+                {loggedUserLeaves.map((leave) => (
+                  <div
+                    key={leave.id}
+                    className="grid grid-cols-[1fr_0.8fr_0.6fr_0.6fr] items-center border-t border-sand-100 px-4 py-3 text-sm"
+                  >
+                    <span className="font-semibold text-ink-500">{leave.type}</span>
+                    <span className="text-ink-400">{leave.from} → {leave.to}</span>
+                    <span className="text-ink-400">{leave.days}</span>
+                    <span className="pill bg-sand-100 text-ink-300">{leave.status}</span>
+                  </div>
+                ))}
+                {loggedUserLeaves.length === 0 && (
+                  <div className="px-4 py-6 text-sm text-ink-300">No leave records for this month.</div>
+                )}
+              </div>
+            </section>
           </div>
         </div>
       </div>
@@ -567,12 +1027,14 @@ function App() {
             </div>
 
             <div className="mt-6 overflow-hidden rounded-2xl border border-sand-200">
-              <div className="grid grid-cols-[1.2fr_0.9fr_0.8fr_0.8fr_0.7fr_0.9fr] bg-sand-50 px-4 py-3 text-xs uppercase tracking-[0.2em] text-ink-300">
+              <div className="grid grid-cols-[1.2fr_0.7fr_0.7fr_0.7fr_0.6fr_0.6fr_0.6fr_0.9fr] bg-sand-50 px-4 py-3 text-xs uppercase tracking-[0.2em] text-ink-300">
                 <span>User</span>
                 <span>Entries</span>
                 <span>Total Hours</span>
                 <span>Avg Hours</span>
                 <span>9h %</span>
+                <span>Casual</span>
+                <span>Sick</span>
                 <span>Actions</span>
               </div>
               {monthSummary.map((user) => (
@@ -580,7 +1042,7 @@ function App() {
                   type="button"
                   key={user.id}
                   onClick={() => setSelectedUserId(user.id)}
-                  className={`grid w-full grid-cols-[1.2fr_0.9fr_0.8fr_0.8fr_0.7fr_0.9fr] items-center border-t border-sand-100 px-4 py-3 text-left text-sm transition ${
+                  className={`grid w-full grid-cols-[1.2fr_0.7fr_0.7fr_0.7fr_0.6fr_0.6fr_0.6fr_0.9fr] items-center border-t border-sand-100 px-4 py-3 text-left text-sm transition ${
                     selectedUserId === user.id ? 'bg-brand-50/80' : 'hover:bg-sand-50/80'
                   }`}
                 >
@@ -592,6 +1054,8 @@ function App() {
                   <span className="text-ink-400">{user.totalHours.toFixed(1)}</span>
                   <span className="text-ink-400">{user.avgHours.toFixed(1)}</span>
                   <span className="pill bg-brand-100 text-brand-700">{user.compliance}%</span>
+                  <span className="text-ink-400">{user.casualBalance}</span>
+                  <span className="text-ink-400">{getEffectiveSickBalance(user, selectedMonth)}</span>
                   <span className="flex flex-wrap gap-2 text-xs font-semibold text-ink-400">
                     <button
                       type="button"
@@ -794,6 +1258,7 @@ function App() {
                   <input
                     className="input-field"
                     placeholder="Full name"
+                    required
                     value={userForm.name}
                     onChange={(event) => setUserForm((prev) => ({ ...prev, name: event.target.value }))}
                   />
@@ -803,6 +1268,7 @@ function App() {
                   <input
                     className="input-field"
                     placeholder="Email"
+                    required
                     value={userForm.email}
                     onChange={(event) => setUserForm((prev) => ({ ...prev, email: event.target.value }))}
                   />
@@ -813,6 +1279,7 @@ function App() {
                     className="input-field"
                     placeholder="Password"
                     type="password"
+                    required
                     value={userForm.password}
                     onChange={(event) => setUserForm((prev) => ({ ...prev, password: event.target.value }))}
                   />
@@ -823,14 +1290,29 @@ function App() {
                 <div>
                   <input
                     className="input-field"
-                    placeholder="Leave balance"
-                    value={userForm.leaveBalance}
+                    placeholder="Casual leave (0-12)"
+                    required
+                    value={userForm.casualBalance}
                     onChange={(event) =>
-                      setUserForm((prev) => ({ ...prev, leaveBalance: event.target.value }))
+                      setUserForm((prev) => ({ ...prev, casualBalance: event.target.value }))
                     }
                   />
-                  {userFormErrors.leaveBalance && (
-                    <p className="mt-1 text-xs text-red-500">{userFormErrors.leaveBalance}</p>
+                  {userFormErrors.casualBalance && (
+                    <p className="mt-1 text-xs text-red-500">{userFormErrors.casualBalance}</p>
+                  )}
+                </div>
+                <div>
+                  <input
+                    className="input-field"
+                    placeholder="Sick leave (0-12)"
+                    required
+                    value={userForm.sickBalance}
+                    onChange={(event) =>
+                      setUserForm((prev) => ({ ...prev, sickBalance: event.target.value }))
+                    }
+                  />
+                  {userFormErrors.sickBalance && (
+                    <p className="mt-1 text-xs text-red-500">{userFormErrors.sickBalance}</p>
                   )}
                 </div>
                 <button className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white">
@@ -876,6 +1358,7 @@ function App() {
                 <div>
                   <select
                     className="input-field"
+                    required
                     value={leaveForm.userId}
                     onChange={(event) => setLeaveForm((prev) => ({ ...prev, userId: event.target.value }))}
                   >
@@ -891,6 +1374,7 @@ function App() {
                 <div>
                   <select
                     className="input-field"
+                    required
                     value={leaveForm.type}
                     onChange={(event) => setLeaveForm((prev) => ({ ...prev, type: event.target.value }))}
                   >
@@ -903,6 +1387,7 @@ function App() {
                   <input
                     className="input-field"
                     type="date"
+                    required
                     value={leaveForm.from}
                     onChange={(event) => setLeaveForm((prev) => ({ ...prev, from: event.target.value }))}
                   />
@@ -912,6 +1397,7 @@ function App() {
                   <input
                     className="input-field"
                     type="date"
+                    required
                     value={leaveForm.to}
                     onChange={(event) => setLeaveForm((prev) => ({ ...prev, to: event.target.value }))}
                   />
@@ -921,6 +1407,7 @@ function App() {
                   <input
                     className="input-field"
                     placeholder="Reason"
+                    required
                     value={leaveForm.reason}
                     onChange={(event) => setLeaveForm((prev) => ({ ...prev, reason: event.target.value }))}
                   />
