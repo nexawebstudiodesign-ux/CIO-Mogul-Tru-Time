@@ -26,6 +26,7 @@ export default function AdminDashboard() {
   const [showUserModal, setShowUserModal] = useState(false)
   const [showLeaveModal, setShowLeaveModal] = useState(false)
   const [showSalaryModal, setShowSalaryModal] = useState(false)
+  const [showUserSalarySlip, setShowUserSalarySlip] = useState(false)
   const [modalMode, setModalMode] = useState('add')
 
   const [userForm, setUserForm] = useState({
@@ -95,6 +96,33 @@ export default function AdminDashboard() {
     const compliance = entries ? Math.round((complianceCount / entries) * 100) : 0
     return { entries, totalHours, avgHours, compliance }
   }, [userAttendance])
+
+  const performanceMetrics = useMemo(() => {
+    const totalMails = userAttendance.reduce((sum, record) => sum + (record.mails || 0), 0)
+    const totalData = userAttendance.reduce((sum, record) => sum + (record.data || 0), 0)
+    const totalLinkedIn = userAttendance.reduce((sum, record) => sum + (record.linkedin || 0), 0)
+    const totalFollowUps = userAttendance.reduce((sum, record) => sum + (record.followUps || 0), 0)
+    const approvedLeaves = userLeaves.filter((leave) => leave.status === 'Approved').length
+    const totalLeaveDays = userLeaves
+      .filter((leave) => leave.status === 'Approved')
+      .reduce((sum, leave) => sum + leave.days, 0)
+    const daysInMonth = new Date(
+      parseInt(selectedMonth.split('-')[0]),
+      parseInt(selectedMonth.split('-')[1]),
+      0
+    ).getDate()
+    const attendancePercentage = daysInMonth ? Math.round((userStats.entries / daysInMonth) * 100) : 0
+    
+    return {
+      totalMails,
+      totalData,
+      totalLinkedIn,
+      totalFollowUps,
+      approvedLeaves,
+      totalLeaveDays,
+      attendancePercentage,
+    }
+  }, [userAttendance, userLeaves, userStats.entries, selectedMonth])
 
   const monthSummary = useMemo(() => {
     return users.map((user) => {
@@ -365,25 +393,25 @@ export default function AdminDashboard() {
     if (!salaryForm.baseSalary || Number.isNaN(Number(salaryForm.baseSalary)) || Number(salaryForm.baseSalary) < 0) {
       errors.baseSalary = 'Valid base salary required.'
     }
-    if (!salaryForm.hra || Number.isNaN(Number(salaryForm.hra)) || Number(salaryForm.hra) < 0) {
+    if (salaryForm.hra && (Number.isNaN(Number(salaryForm.hra)) || Number(salaryForm.hra) < 0)) {
       errors.hra = 'Valid HRA required.'
     }
-    if (!salaryForm.transportAllowance || Number.isNaN(Number(salaryForm.transportAllowance)) || Number(salaryForm.transportAllowance) < 0) {
+    if (salaryForm.transportAllowance && (Number.isNaN(Number(salaryForm.transportAllowance)) || Number(salaryForm.transportAllowance) < 0)) {
       errors.transportAllowance = 'Valid transport allowance required.'
     }
-    if (!salaryForm.otherAllowance || Number.isNaN(Number(salaryForm.otherAllowance)) || Number(salaryForm.otherAllowance) < 0) {
+    if (salaryForm.otherAllowance && (Number.isNaN(Number(salaryForm.otherAllowance)) || Number(salaryForm.otherAllowance) < 0)) {
       errors.otherAllowance = 'Valid other allowance required.'
     }
-    if (salaryForm.performanceBonus === '' || Number.isNaN(Number(salaryForm.performanceBonus)) || Number(salaryForm.performanceBonus) < 0) {
+    if (salaryForm.performanceBonus && (Number.isNaN(Number(salaryForm.performanceBonus)) || Number(salaryForm.performanceBonus) < 0)) {
       errors.performanceBonus = 'Valid bonus required (0 or more).'
     }
-    if (!salaryForm.pfDeduction || Number.isNaN(Number(salaryForm.pfDeduction)) || Number(salaryForm.pfDeduction) < 0) {
+    if (salaryForm.pfDeduction && (Number.isNaN(Number(salaryForm.pfDeduction)) || Number(salaryForm.pfDeduction) < 0)) {
       errors.pfDeduction = 'Valid PF deduction required.'
     }
-    if (!salaryForm.taxDeduction || Number.isNaN(Number(salaryForm.taxDeduction)) || Number(salaryForm.taxDeduction) < 0) {
+    if (salaryForm.taxDeduction && (Number.isNaN(Number(salaryForm.taxDeduction)) || Number(salaryForm.taxDeduction) < 0)) {
       errors.taxDeduction = 'Valid tax deduction required.'
     }
-    if (salaryForm.otherDeduction === '' || Number.isNaN(Number(salaryForm.otherDeduction)) || Number(salaryForm.otherDeduction) < 0) {
+    if (salaryForm.otherDeduction && (Number.isNaN(Number(salaryForm.otherDeduction)) || Number(salaryForm.otherDeduction) < 0)) {
       errors.otherDeduction = 'Valid other deduction required (0 or more).'
     }
     return errors
@@ -568,13 +596,13 @@ export default function AdminDashboard() {
                 ...s,
                 workingDays: Number(salaryForm.workingDays),
                 baseSalary: Number(salaryForm.baseSalary),
-                hra: Number(salaryForm.hra),
-                transportAllowance: Number(salaryForm.transportAllowance),
-                otherAllowance: Number(salaryForm.otherAllowance),
-                performanceBonus: Number(salaryForm.performanceBonus),
-                pfDeduction: Number(salaryForm.pfDeduction),
-                taxDeduction: Number(salaryForm.taxDeduction),
-                otherDeduction: Number(salaryForm.otherDeduction),
+                hra: Number(salaryForm.hra) || 0,
+                transportAllowance: Number(salaryForm.transportAllowance) || 0,
+                otherAllowance: Number(salaryForm.otherAllowance) || 0,
+                performanceBonus: Number(salaryForm.performanceBonus) || 0,
+                pfDeduction: Number(salaryForm.pfDeduction) || 0,
+                taxDeduction: Number(salaryForm.taxDeduction) || 0,
+                otherDeduction: Number(salaryForm.otherDeduction) || 0,
               }
             : s
         )
@@ -586,13 +614,13 @@ export default function AdminDashboard() {
         month: selectedMonth,
         workingDays: Number(salaryForm.workingDays),
         baseSalary: Number(salaryForm.baseSalary),
-        hra: Number(salaryForm.hra),
-        transportAllowance: Number(salaryForm.transportAllowance),
-        otherAllowance: Number(salaryForm.otherAllowance),
-        performanceBonus: Number(salaryForm.performanceBonus),
-        pfDeduction: Number(salaryForm.pfDeduction),
-        taxDeduction: Number(salaryForm.taxDeduction),
-        otherDeduction: Number(salaryForm.otherDeduction),
+        hra: Number(salaryForm.hra) || 0,
+        transportAllowance: Number(salaryForm.transportAllowance) || 0,
+        otherAllowance: Number(salaryForm.otherAllowance) || 0,
+        performanceBonus: Number(salaryForm.performanceBonus) || 0,
+        pfDeduction: Number(salaryForm.pfDeduction) || 0,
+        taxDeduction: Number(salaryForm.taxDeduction) || 0,
+        otherDeduction: Number(salaryForm.otherDeduction) || 0,
       }
       setMonthlySalaries((prev) => [newSalary, ...prev])
     }
@@ -670,8 +698,10 @@ export default function AdminDashboard() {
                   type="button"
                   key={user.id}
                   onClick={() => setSelectedUserId(user.id)}
-                  className={`grid w-full grid-cols-[1.2fr_0.7fr_0.7fr_0.7fr_0.6fr_0.6fr_0.6fr_0.9fr] items-center border-t border-sand-100 px-4 py-3 text-left text-sm transition ${
-                    selectedUserId === user.id ? 'bg-brand-50/80' : 'hover:bg-sand-50/80'
+                  className={`grid w-full grid-cols-[1.2fr_0.7fr_0.7fr_0.7fr_0.6fr_0.6fr_0.6fr_0.9fr] items-center border-t px-4 py-3 text-left text-sm transition ${
+                    selectedUserId === user.id 
+                      ? 'bg-brand-100 border-brand-300 border-l-4 border-l-brand-600' 
+                      : 'border-sand-100 hover:bg-sand-50/80'
                   }`}
                 >
                   <div>
@@ -953,6 +983,70 @@ export default function AdminDashboard() {
                 ) : (
                   <p className="text-sm text-ink-300">No salary set for this month.</p>
                 )}
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-ink-500">Performance Summary</h3>
+                <button
+                  className="rounded-lg bg-brand-600 px-3 py-1 text-xs font-semibold text-white"
+                  onClick={() => setShowUserSalarySlip(true)}
+                >
+                  View Salary Slip
+                </button>
+              </div>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-2xl border border-sand-200 bg-gradient-to-br from-blue-50 to-white p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-blue-600">Total Hours</p>
+                  <p className="mt-2 text-2xl font-bold text-blue-700">{userStats.totalHours.toFixed(1)}</p>
+                  <p className="mt-1 text-xs text-ink-300">This Month</p>
+                </div>
+                <div className="rounded-2xl border border-sand-200 bg-gradient-to-br from-green-50 to-white p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-green-600">Attendance</p>
+                  <p className="mt-2 text-2xl font-bold text-green-700">{performanceMetrics.attendancePercentage}%</p>
+                  <p className="mt-1 text-xs text-ink-300">{userStats.entries} days worked</p>
+                </div>
+                <div className="rounded-2xl border border-sand-200 bg-gradient-to-br from-purple-50 to-white p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-purple-600">Leaves Taken</p>
+                  <p className="mt-2 text-2xl font-bold text-purple-700">{performanceMetrics.totalLeaveDays}</p>
+                  <p className="mt-1 text-xs text-ink-300">{performanceMetrics.approvedLeaves} leave(s)</p>
+                </div>
+                <div className="rounded-2xl border border-sand-200 bg-gradient-to-br from-orange-50 to-white p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-orange-600">Leave Balance</p>
+                  <div className="mt-2 flex items-center justify-between gap-3">
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-orange-700">{selectedUser?.casualBalance || 0}</p>
+                      <p className="text-xs text-ink-400">Casual</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-orange-700">{getEffectiveSickBalance(selectedUser, selectedMonth) || 0}</p>
+                      <p className="text-xs text-ink-400">Sick</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="mt-3 rounded-2xl border border-sand-200 p-4 bg-white/70">
+                <h4 className="text-xs font-semibold text-ink-500 uppercase tracking-[0.2em] mb-3">Productivity Metrics</h4>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <div>
+                    <p className="text-xs text-ink-400">Total Mails</p>
+                    <p className="mt-1 text-xl font-bold text-brand-600">{performanceMetrics.totalMails}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-ink-400">Data Entries</p>
+                    <p className="mt-1 text-xl font-bold text-brand-600">{performanceMetrics.totalData}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-ink-400">LinkedIn Posts</p>
+                    <p className="mt-1 text-xl font-bold text-brand-600">{performanceMetrics.totalLinkedIn}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-ink-400">Follow Ups</p>
+                    <p className="mt-1 text-xl font-bold text-brand-600">{performanceMetrics.totalFollowUps}</p>
+                  </div>
+                </div>
               </div>
             </div>
           </section>
@@ -1316,6 +1410,190 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+
+      {showUserSalarySlip && (() => {
+        const userSalary = monthlySalaries.find(
+          (s) => s.userId === selectedUserId && s.month === selectedMonth
+        )
+        const baseSalary = userSalary?.baseSalary || selectedUser?.baseSalary || 0
+        const hra = userSalary?.hra || selectedUser?.hra || 0
+        const transportAllowance = userSalary?.transportAllowance || selectedUser?.transportAllowance || 0
+        const otherAllowance = userSalary?.otherAllowance || selectedUser?.otherAllowance || 0
+        const performanceBonus = userSalary?.performanceBonus || 0
+        const pfDeduction = userSalary?.pfDeduction || selectedUser?.pfDeduction || 0
+        const taxDeduction = userSalary?.taxDeduction || selectedUser?.taxDeduction || 0
+        const otherDeduction = userSalary?.otherDeduction || selectedUser?.otherDeduction || 0
+        const grossEarnings = baseSalary + hra + transportAllowance + otherAllowance + performanceBonus
+        const totalDeductions = pfDeduction + taxDeduction + otherDeduction
+        const netSalary = grossEarnings - totalDeductions
+
+        const monthYear = new Date(selectedMonth + '-01').toLocaleDateString('en-US', {
+          month: 'long',
+          year: 'numeric',
+        })
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 overflow-y-auto">
+            <div className="glass-panel w-full max-w-4xl rounded-3xl p-8 shadow-lift my-8">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-semibold text-ink-500">
+                  Salary Slip - {selectedUser?.name}
+                </h3>
+                <div className="flex gap-2">
+                  <button
+                    className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white"
+                    onClick={() => window.print()}
+                  >
+                    Print
+                  </button>
+                  <button
+                    className="rounded-lg border border-sand-200 px-3 py-2 text-sm font-semibold text-ink-400"
+                    onClick={() => setShowUserSalarySlip(false)}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+
+              {baseSalary === 0 && hra === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-lg font-bold text-brand-600">
+                    CIO MOGUL GLOBAL PUBLICATION PRIVATE LIMITED
+                  </p>
+                  <h1 className="mt-3 text-2xl font-bold text-ink-500">No Salary Data</h1>
+                  <p className="mt-3 text-ink-400">No salary information available for {monthYear}.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="border-b border-sand-200 pb-4">
+                    <div className="text-center mb-4">
+                      <h2 className="text-lg font-bold text-brand-600">
+                        CIO MOGUL GLOBAL PUBLICATION PRIVATE LIMITED
+                      </h2>
+                      <p className="text-xs text-ink-400 mt-1">UAN: U58132MH2025PTC459494</p>
+                      <p className="text-xs text-ink-400 mt-0.5">
+                        Sno. 80/1 Sai Nagari Bld, B/iwadmukhwadi Bhosari, Punawale, Pune, Pune City,
+                        Maharashtra, India, 411033
+                      </p>
+                    </div>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-ink-300">Salary Slip</p>
+                        <h1 className="mt-1 text-xl font-bold text-ink-500">{monthYear}</h1>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-ink-300">Employee Details</p>
+                        <p className="font-semibold text-sm mt-1">{selectedUser?.name}</p>
+                        <p className="text-ink-300 text-xs">{selectedUser?.id}</p>
+                        <p className="text-ink-300 text-xs">{selectedUser?.email}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="rounded-xl border border-sand-200 overflow-hidden">
+                      <div className="bg-green-50 px-4 py-2">
+                        <h3 className="text-sm font-semibold text-green-700">Earnings</h3>
+                      </div>
+                      <div className="bg-white p-4 space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-ink-400">Base Salary</span>
+                          <span className="font-semibold text-ink-500">₹{baseSalary.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-ink-400">HRA</span>
+                          <span className="font-semibold text-ink-500">₹{hra.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-ink-400">Transport Allowance</span>
+                          <span className="font-semibold text-ink-500">₹{transportAllowance.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-ink-400">Other Allowance</span>
+                          <span className="font-semibold text-ink-500">₹{otherAllowance.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-ink-400">Performance Bonus</span>
+                          <span className="font-semibold text-green-600">₹{performanceBonus.toLocaleString()}</span>
+                        </div>
+                        <div className="border-t border-sand-200 pt-2">
+                          <div className="flex justify-between font-bold">
+                            <span className="text-ink-500">Gross Earnings</span>
+                            <span className="text-green-600">₹{grossEarnings.toLocaleString()}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-sand-200 overflow-hidden">
+                      <div className="bg-red-50 px-4 py-2">
+                        <h3 className="text-sm font-semibold text-red-700">Deductions</h3>
+                      </div>
+                      <div className="bg-white p-4 space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-ink-400">PF Deduction</span>
+                          <span className="font-semibold text-ink-500">₹{pfDeduction.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-ink-400">Tax Deduction</span>
+                          <span className="font-semibold text-ink-500">₹{taxDeduction.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-ink-400">Other Deduction</span>
+                          <span className="font-semibold text-ink-500">₹{otherDeduction.toLocaleString()}</span>
+                        </div>
+                        <div className="border-t border-sand-200 pt-2 mt-auto">
+                          <div className="flex justify-between font-bold">
+                            <span className="text-ink-500">Total Deductions</span>
+                            <span className="text-red-600">₹{totalDeductions.toLocaleString()}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border-2 border-brand-200 bg-brand-50 p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-brand-700 font-semibold">Net Salary (Take Home)</p>
+                        <p className="text-xs text-ink-400 mt-0.5">Gross Earnings - Total Deductions</p>
+                      </div>
+                      <p className="text-3xl font-bold text-brand-600">₹{netSalary.toLocaleString()}</p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-sand-200 bg-white/70 p-4">
+                    <h4 className="text-xs font-semibold text-ink-500 mb-3">Attendance Summary</h4>
+                    <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <p className="text-ink-400">Days Worked</p>
+                        <p className="text-xl font-bold text-ink-500">{userStats.entries}</p>
+                      </div>
+                      <div>
+                        <p className="text-ink-400">Total Hours</p>
+                        <p className="text-xl font-bold text-ink-500">{userStats.totalHours.toFixed(1)}</p>
+                      </div>
+                      <div>
+                        <p className="text-ink-400">9h Compliance</p>
+                        <p className="text-xl font-bold text-brand-600">{userStats.compliance}%</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 pt-4 border-t border-sand-200">
+                    <p className="text-xs text-ink-400 text-center">
+                      This is a computer-generated salary slip and does not require a signature.
+                    </p>
+                    <p className="text-xs text-ink-300 text-center mt-1">
+                      For queries, contact: info@theciomogul.com
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }
