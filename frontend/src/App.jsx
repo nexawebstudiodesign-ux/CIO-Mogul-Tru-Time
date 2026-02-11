@@ -1070,13 +1070,8 @@ function App() {
                       <img 
                         src="/signature.png" 
                         alt="Director Signature" 
-                        className="h-16 mx-auto"
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                          e.target.nextElementSibling.style.display = 'block';
-                        }}
+                        className="h-16 mx-auto object-contain"
                       />
-                      <div className="text-xl font-signature text-brand-600 transform -rotate-6" style={{display: 'none'}}>Signature</div>
                       <div className="text-[10px] font-semibold text-ink-500 print-text mt-1">Director</div>
                     </div>
                   </div>
