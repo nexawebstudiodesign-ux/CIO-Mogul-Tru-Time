@@ -30,6 +30,13 @@ create table if not exists public.users (
   casual_balance int not null default 12 check (casual_balance between 0 and 12),
   sick_balance int not null default 12 check (sick_balance between 0 and 12),
   sick_base_month date not null default date_trunc('month', now())::date,
+  base_salary numeric(10,2) not null default 0,
+  hra numeric(10,2) not null default 0,
+  transport_allowance numeric(10,2) not null default 0,
+  other_allowance numeric(10,2) not null default 0,
+  pf_deduction numeric(10,2) not null default 0,
+  tax_deduction numeric(10,2) not null default 0,
+  other_deduction numeric(10,2) not null default 0,
   is_active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -71,10 +78,32 @@ create table if not exists public.leaves (
 create index if not exists leaves_user_id_idx on public.leaves (user_id);
 create index if not exists leaves_status_idx on public.leaves (status);
 
+-- Monthly Salaries
+create table if not exists public.monthly_salaries (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.users(id) on delete cascade,
+  month date not null,
+  base_salary numeric(10,2) not null default 0,
+  hra numeric(10,2) not null default 0,
+  transport_allowance numeric(10,2) not null default 0,
+  other_allowance numeric(10,2) not null default 0,
+  performance_bonus numeric(10,2) not null default 0,
+  pf_deduction numeric(10,2) not null default 0,
+  tax_deduction numeric(10,2) not null default 0,
+  other_deduction numeric(10,2) not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint monthly_salaries_unique_user_month unique (user_id, month)
+);
+
+create index if not exists monthly_salaries_user_id_idx on public.monthly_salaries (user_id);
+create index if not exists monthly_salaries_month_idx on public.monthly_salaries (month);
+
 -- RLS
 alter table public.users enable row level security;
 alter table public.attendance enable row level security;
 alter table public.leaves enable row level security;
+alter table public.monthly_salaries enable row level security;
 
 -- Service role bypasses RLS
 create policy "users_service_role" on public.users
@@ -88,6 +117,11 @@ create policy "attendance_service_role" on public.attendance
   with check (auth.role() = 'service_role');
 
 create policy "leaves_service_role" on public.leaves
+  for all
+  using (auth.role() = 'service_role')
+  with check (auth.role() = 'service_role');
+
+create policy "monthly_salaries_service_role" on public.monthly_salaries
   for all
   using (auth.role() = 'service_role')
   with check (auth.role() = 'service_role');
@@ -148,6 +182,7 @@ Open:
 - View all user records by month with compliance tracking
 - Manage Casual (max 12) and Sick (max 12) leave balances
 - Sick leave lapses by 1 each month
+- Set monthly salary for each user with performance bonus
 - Add/Edit/Delete users and leaves
 - CSV export of monthly summary
 
@@ -155,6 +190,7 @@ Open:
 - Daily Tru Time entry (login/logout times + productivity metrics)
 - Apply for leave (Casual, Sick, Paid)
 - View monthly attendance and leave history
+- Generate salary slip with performance summary (print/save as PDF)
 
 ### API (Backend)
 - JWT authentication with role-based guards
@@ -192,6 +228,8 @@ Open:
 - `casual_balance` (0–12)
 - `sick_balance` (0–12)
 - `sick_base_month` (date)
+- `base_salary`, `hra`, `transport_allowance`, `other_allowance` (numeric)
+- `pf_deduction`, `tax_deduction`, `other_deduction` (numeric)
 - `is_active` (boolean)
 
 ### attendance
@@ -201,6 +239,13 @@ Open:
 - `mails_count`, `data_count`, `linkedin_count`, `follow_up_count`
 
 ### leaves
+
+### monthly_salaries
+- `id` (uuid, PK)
+- `user_id` (uuid, FK → users)
+- `month` (date, unique per user)
+- `base_salary`, `hra`, `transport_allowance`, `other_allowance`, `performance_bonus` (numeric)
+- `pf_deduction`, `tax_deduction`, `other_deduction` (numeric)
 - `id` (uuid, PK)
 - `user_id` (uuid, FK → users)
 - `leave_type` (CASUAL | SICK | PAID)

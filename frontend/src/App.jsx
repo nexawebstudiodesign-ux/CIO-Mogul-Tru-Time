@@ -10,6 +10,13 @@ const initialUsers = [
     casualBalance: 12,
     sickBalance: 12,
     sickBaseMonth: currentMonth,
+    baseSalary: 50000,
+    hra: 15000,
+    transportAllowance: 3000,
+    otherAllowance: 2000,
+    pfDeduction: 6000,
+    taxDeduction: 5000,
+    otherDeduction: 0,
   },
   {
     id: 'CIO-0002',
@@ -19,6 +26,13 @@ const initialUsers = [
     casualBalance: 12,
     sickBalance: 12,
     sickBaseMonth: currentMonth,
+    baseSalary: 55000,
+    hra: 16500,
+    transportAllowance: 3000,
+    otherAllowance: 2500,
+    pfDeduction: 6600,
+    taxDeduction: 6000,
+    otherDeduction: 0,
   },
   {
     id: 'CIO-0003',
@@ -28,6 +42,13 @@ const initialUsers = [
     casualBalance: 10,
     sickBalance: 12,
     sickBaseMonth: currentMonth,
+    baseSalary: 45000,
+    hra: 13500,
+    transportAllowance: 3000,
+    otherAllowance: 1500,
+    pfDeduction: 5400,
+    taxDeduction: 4000,
+    otherDeduction: 0,
   },
   {
     id: 'CIO-0004',
@@ -37,6 +58,13 @@ const initialUsers = [
     casualBalance: 12,
     sickBalance: 12,
     sickBaseMonth: currentMonth,
+    baseSalary: 60000,
+    hra: 18000,
+    transportAllowance: 3500,
+    otherAllowance: 3000,
+    pfDeduction: 7200,
+    taxDeduction: 7500,
+    otherDeduction: 0,
   },
 ]
 
@@ -98,11 +126,54 @@ const initialAttendance = [
   { userId: 'CIO-0004', date: '2026-01-20', hours: 9.1, mails: 190, data: 49, linkedin: 32, followUps: 8 },
 ]
 
+const initialMonthlySalaries = [
+  {
+    id: 'MS-001',
+    userId: 'CIO-0001',
+    month: '2026-02',
+    baseSalary: 50000,
+    hra: 15000,
+    transportAllowance: 3000,
+    otherAllowance: 2000,
+    performanceBonus: 5000,
+    pfDeduction: 6000,
+    taxDeduction: 5000,
+    otherDeduction: 0,
+  },
+  {
+    id: 'MS-002',
+    userId: 'CIO-0002',
+    month: '2026-02',
+    baseSalary: 55000,
+    hra: 16500,
+    transportAllowance: 3000,
+    otherAllowance: 2500,
+    performanceBonus: 3000,
+    pfDeduction: 6600,
+    taxDeduction: 6000,
+    otherDeduction: 0,
+  },
+  {
+    id: 'MS-003',
+    userId: 'CIO-0004',
+    month: '2026-02',
+    baseSalary: 60000,
+    hra: 18000,
+    transportAllowance: 3500,
+    otherAllowance: 3000,
+    performanceBonus: 7000,
+    pfDeduction: 7200,
+    taxDeduction: 7500,
+    otherDeduction: 0,
+  },
+]
+
 function App() {
   const currentPath = window.location.pathname.toLowerCase()
   const isDashboardRoute = currentPath === '/dashboard'
   const isLoginRoute = currentPath === '/login'
   const isUserRoute = currentPath === '/user'
+  const isSalaryRoute = currentPath === '/salary'
   const requiredPassword = import.meta.env.VITE_DASHBOARD_PASSWORD || 'ciomogul'
   const [passwordInput, setPasswordInput] = useState('')
   const [authError, setAuthError] = useState('')
@@ -114,11 +185,13 @@ function App() {
   const [users, setUsers] = useState(initialUsers)
   const [leaves, setLeaves] = useState(initialLeaves)
   const [attendance, setAttendance] = useState(initialAttendance)
+  const [monthlySalaries, setMonthlySalaries] = useState(initialMonthlySalaries)
   const [selectedMonth, setSelectedMonth] = useState(currentMonth)
   const [selectedUserId, setSelectedUserId] = useState(initialUsers[0].id)
   const [selectedLeaveId, setSelectedLeaveId] = useState(initialLeaves[0]?.id ?? '')
   const [showUserModal, setShowUserModal] = useState(false)
   const [showLeaveModal, setShowLeaveModal] = useState(false)
+  const [showSalaryModal, setShowSalaryModal] = useState(false)
   const [modalMode, setModalMode] = useState('add')
   const [userForm, setUserForm] = useState({
     name: '',
@@ -142,6 +215,17 @@ function App() {
   const [userAttendanceErrors, setUserAttendanceErrors] = useState({})
   const [userLeaveForm, setUserLeaveForm] = useState({ type: 'Casual', from: '', to: '', reason: '' })
   const [userLeaveErrors, setUserLeaveErrors] = useState({})
+  const [salaryForm, setSalaryForm] = useState({
+    baseSalary: '',
+    hra: '',
+    transportAllowance: '',
+    otherAllowance: '',
+    performanceBonus: '',
+    pfDeduction: '',
+    taxDeduction: '',
+    otherDeduction: '',
+  })
+  const [salaryFormErrors, setSalaryFormErrors] = useState({})
 
   const filteredAttendance = useMemo(
     () => attendance.filter((record) => record.date.startsWith(selectedMonth)),
@@ -405,6 +489,17 @@ function App() {
     return `L-${String(max + 1).padStart(4, '0')}`
   }
 
+  const getNextSalaryId = (list) => {
+    let max = 0
+    list.forEach((salary) => {
+      const match = salary.id.match(/MS-(\d+)/)
+      if (match) {
+        max = Math.max(max, Number(match[1]))
+      }
+    })
+    return `MS-${String(max + 1).padStart(3, '0')}`
+  }
+
   const clampBalance = (value) => Math.min(12, Math.max(0, value))
 
   const monthDiff = (fromMonth, toMonth) => {
@@ -577,6 +672,327 @@ function App() {
     setShowLeaveModal(false)
   }
 
+  const openSalaryModal = (mode) => {
+    setModalMode(mode)
+    setSalaryFormErrors({})
+    const existing = monthlySalaries.find(
+      (s) => s.userId === selectedUserId && s.month === selectedMonth
+    )
+    if (mode === 'add' || !existing) {
+      setSalaryForm({
+        baseSalary: '',
+        hra: '',
+        transportAllowance: '',
+        otherAllowance: '',
+        performanceBonus: '0',
+        pfDeduction: '',
+        taxDeduction: '',
+        otherDeduction: '0',
+      })
+    } else {
+      setSalaryForm({
+        baseSalary: String(existing.baseSalary),
+        hra: String(existing.hra),
+        transportAllowance: String(existing.transportAllowance),
+        otherAllowance: String(existing.otherAllowance),
+        performanceBonus: String(existing.performanceBonus),
+        pfDeduction: String(existing.pfDeduction),
+        taxDeduction: String(existing.taxDeduction),
+        otherDeduction: String(existing.otherDeduction),
+      })
+    }
+    setShowSalaryModal(true)
+  }
+
+  const validateSalaryForm = () => {
+    const errors = {}
+    if (!salaryForm.baseSalary || Number.isNaN(Number(salaryForm.baseSalary)) || Number(salaryForm.baseSalary) < 0) {
+      errors.baseSalary = 'Valid base salary required.'
+    }
+    if (!salaryForm.hra || Number.isNaN(Number(salaryForm.hra)) || Number(salaryForm.hra) < 0) {
+      errors.hra = 'Valid HRA required.'
+    }
+    if (!salaryForm.transportAllowance || Number.isNaN(Number(salaryForm.transportAllowance)) || Number(salaryForm.transportAllowance) < 0) {
+      errors.transportAllowance = 'Valid transport allowance required.'
+    }
+    if (!salaryForm.otherAllowance || Number.isNaN(Number(salaryForm.otherAllowance)) || Number(salaryForm.otherAllowance) < 0) {
+      errors.otherAllowance = 'Valid other allowance required.'
+    }
+    if (salaryForm.performanceBonus === '' || Number.isNaN(Number(salaryForm.performanceBonus)) || Number(salaryForm.performanceBonus) < 0) {
+      errors.performanceBonus = 'Valid bonus required (0 or more).'
+    }
+    if (!salaryForm.pfDeduction || Number.isNaN(Number(salaryForm.pfDeduction)) || Number(salaryForm.pfDeduction) < 0) {
+      errors.pfDeduction = 'Valid PF deduction required.'
+    }
+    if (!salaryForm.taxDeduction || Number.isNaN(Number(salaryForm.taxDeduction)) || Number(salaryForm.taxDeduction) < 0) {
+      errors.taxDeduction = 'Valid tax deduction required.'
+    }
+    if (salaryForm.otherDeduction === '' || Number.isNaN(Number(salaryForm.otherDeduction)) || Number(salaryForm.otherDeduction) < 0) {
+      errors.otherDeduction = 'Valid other deduction required (0 or more).'
+    }
+    return errors
+  }
+
+  const handleSalarySubmit = (event) => {
+    event.preventDefault()
+    const errors = validateSalaryForm()
+    setSalaryFormErrors(errors)
+    if (Object.keys(errors).length > 0) {
+      return
+    }
+    const existing = monthlySalaries.find(
+      (s) => s.userId === selectedUserId && s.month === selectedMonth
+    )
+    if (existing) {
+      setMonthlySalaries((prev) =>
+        prev.map((s) =>
+          s.id === existing.id
+            ? {
+                ...s,
+                baseSalary: Number(salaryForm.baseSalary),
+                hra: Number(salaryForm.hra),
+                transportAllowance: Number(salaryForm.transportAllowance),
+                otherAllowance: Number(salaryForm.otherAllowance),
+                performanceBonus: Number(salaryForm.performanceBonus),
+                pfDeduction: Number(salaryForm.pfDeduction),
+                taxDeduction: Number(salaryForm.taxDeduction),
+                otherDeduction: Number(salaryForm.otherDeduction),
+              }
+            : s
+        )
+      )
+    } else {
+      const newSalary = {
+        id: getNextSalaryId(monthlySalaries),
+        userId: selectedUserId,
+        month: selectedMonth,
+        baseSalary: Number(salaryForm.baseSalary),
+        hra: Number(salaryForm.hra),
+        transportAllowance: Number(salaryForm.transportAllowance),
+        otherAllowance: Number(salaryForm.otherAllowance),
+        performanceBonus: Number(salaryForm.performanceBonus),
+        pfDeduction: Number(salaryForm.pfDeduction),
+        taxDeduction: Number(salaryForm.taxDeduction),
+        otherDeduction: Number(salaryForm.otherDeduction),
+      }
+      setMonthlySalaries((prev) => [newSalary, ...prev])
+    }
+    setShowSalaryModal(false)
+  }
+
+  if (isSalaryRoute) {
+    if (!loggedUser) {
+      return (
+        <div className="min-h-screen p-6 md:p-10">
+          <div className="mx-auto max-w-lg">
+            <div className="glass-panel rounded-3xl p-8 shadow-lift">
+              <p className="text-sm uppercase tracking-[0.3em] text-ink-300">CIO Mogul</p>
+              <h1 className="section-title mt-3">Access Denied</h1>
+              <p className="mt-2 text-sm text-ink-300">Please log in to view your salary slip.</p>
+              <a
+                className="mt-6 inline-flex items-center rounded-full bg-ink-500 px-5 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-sand-50"
+                href="/login"
+              >
+                Go to Login
+              </a>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    const monthYear = new Date(selectedMonth + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+    const loggedUserMonthAttendance = filteredAttendance.filter((record) => record.userId === loggedUserId)
+    const totalDays = loggedUserMonthAttendance.length
+    const totalHours = loggedUserMonthAttendance.reduce((sum, record) => sum + record.hours, 0)
+    const avgHours = totalDays ? (totalHours / totalDays).toFixed(1) : 0
+    const complianceDays = loggedUserMonthAttendance.filter((rec) => rec.hours >= 9).length
+    const complianceRate = totalDays ? Math.round((complianceDays / totalDays) * 100) : 0
+    const totalMails = loggedUserMonthAttendance.reduce((sum, rec) => sum + rec.mails, 0)
+    const totalData = loggedUserMonthAttendance.reduce((sum, rec) => sum + rec.data, 0)
+    const totalLinkedin = loggedUserMonthAttendance.reduce((sum, rec) => sum + rec.linkedin, 0)
+    const totalFollowUps = loggedUserMonthAttendance.reduce((sum, rec) => sum + rec.followUps, 0)
+
+    const monthlySalary = monthlySalaries.find(
+      (s) => s.userId === loggedUserId && s.month === selectedMonth
+    )
+    const baseSalary = monthlySalary?.baseSalary || loggedUser.baseSalary || 0
+    const hra = monthlySalary?.hra || loggedUser.hra || 0
+    const transportAllowance = monthlySalary?.transportAllowance || loggedUser.transportAllowance || 0
+    const otherAllowance = monthlySalary?.otherAllowance || loggedUser.otherAllowance || 0
+    const performanceBonus = monthlySalary?.performanceBonus || 0
+    const pfDeduction = monthlySalary?.pfDeduction || loggedUser.pfDeduction || 0
+    const taxDeduction = monthlySalary?.taxDeduction || loggedUser.taxDeduction || 0
+    const otherDeduction = monthlySalary?.otherDeduction || loggedUser.otherDeduction || 0
+    
+    const grossEarnings = baseSalary + hra + transportAllowance + otherAllowance + performanceBonus
+    const totalDeductions = pfDeduction + taxDeduction + otherDeduction
+    const netSalary = grossEarnings - totalDeductions
+
+    return (
+      <>
+        <style>{`
+          @media print {
+            .no-print { display: none !important; }
+            body { background: white; }
+            .salary-slip-container { box-shadow: none; padding: 20px; }
+          }
+        `}</style>
+        <div className="min-h-screen p-6 md:p-10">
+          <div className="mx-auto max-w-4xl">
+            <div className="no-print mb-6 flex items-center justify-between">
+              <a
+                href="/user"
+                className="inline-flex items-center gap-2 text-sm font-semibold text-ink-500 hover:text-brand-600"
+              >
+                ← Back to Dashboard
+              </a>
+              <button
+                onClick={() => window.print()}
+                className="rounded-xl bg-brand-600 px-6 py-2 text-sm font-semibold text-white shadow hover:bg-brand-700"
+              >
+                Print / Save as PDF (Ctrl+P)
+              </button>
+            </div>
+            
+            <div className="salary-slip-container glass-panel rounded-3xl p-8 shadow-lift">
+              <div className="border-b border-sand-200 pb-6">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm uppercase tracking-[0.3em] text-ink-300">CIO Mogul</p>
+                    <h1 className="mt-2 text-3xl font-bold text-ink-500">Salary Slip</h1>
+                    <p className="mt-1 text-sm text-ink-300">{monthYear}</p>
+                  </div>
+                  <div className="text-right text-sm">
+                    <p className="font-semibold text-ink-500">{loggedUser.name}</p>
+                    <p className="text-ink-300">{loggedUser.id}</p>
+                    <p className="text-ink-300">{loggedUser.email}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-8 grid gap-8 md:grid-cols-2">
+                <div>
+                  <h2 className="text-lg font-bold text-ink-500">Earnings</h2>
+                  <div className="mt-4 space-y-3">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-ink-400">Basic Salary</span>
+                      <span className="font-semibold text-ink-500">₹{baseSalary.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-ink-400">HRA</span>
+                      <span className="font-semibold text-ink-500">₹{hra.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-ink-400">Transport Allowance</span>
+                      <span className="font-semibold text-ink-500">₹{transportAllowance.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-ink-400">Other Allowance</span>
+                      <span className="font-semibold text-ink-500">₹{otherAllowance.toLocaleString()}</span>
+                    </div>
+                    {performanceBonus > 0 && (
+                      <div className="flex justify-between rounded-lg bg-green-50 px-3 py-2 text-sm">
+                        <span className="font-semibold text-green-700">Performance Bonus</span>
+                        <span className="font-bold text-green-900">₹{performanceBonus.toLocaleString()}</span>
+                      </div>
+                    )}
+                    <div className="border-t border-sand-200 pt-3">
+                      <div className="flex justify-between font-bold">
+                        <span className="text-ink-500">Gross Earnings</span>
+                        <span className="text-brand-600">₹{grossEarnings.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h2 className="text-lg font-bold text-ink-500">Deductions</h2>
+                  <div className="mt-4 space-y-3">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-ink-400">Provident Fund (PF)</span>
+                      <span className="font-semibold text-ink-500">₹{pfDeduction.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-ink-400">Tax Deduction (TDS)</span>
+                      <span className="font-semibold text-ink-500">₹{taxDeduction.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-ink-400">Other Deductions</span>
+                      <span className="font-semibold text-ink-500">₹{otherDeduction.toLocaleString()}</span>
+                    </div>
+                    <div className="border-t border-sand-200 pt-3">
+                      <div className="flex justify-between font-bold">
+                        <span className="text-ink-500">Total Deductions</span>
+                        <span className="text-red-600">₹{totalDeductions.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-8 rounded-2xl bg-brand-50 p-6">
+                <div className="flex items-center justify-between">
+                  <span className="text-lg font-bold text-ink-500">Net Salary</span>
+                  <span className="text-2xl font-bold text-brand-600">₹{netSalary.toLocaleString()}</span>
+                </div>
+              </div>
+
+              <div className="mt-8 border-t border-sand-200 pt-8">
+                <h2 className="text-lg font-bold text-ink-500">Performance Summary</h2>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="rounded-xl border border-sand-200 bg-white/50 p-4">
+                    <p className="text-xs uppercase tracking-wide text-ink-300">Days Worked</p>
+                    <p className="mt-1 text-2xl font-bold text-ink-500">{totalDays}</p>
+                  </div>
+                  <div className="rounded-xl border border-sand-200 bg-white/50 p-4">
+                    <p className="text-xs uppercase tracking-wide text-ink-300">Avg Hours/Day</p>
+                    <p className="mt-1 text-2xl font-bold text-ink-500">{avgHours}</p>
+                  </div>
+                  <div className="rounded-xl border border-sand-200 bg-white/50 p-4">
+                    <p className="text-xs uppercase tracking-wide text-ink-300">Compliance</p>
+                    <p className="mt-1 text-2xl font-bold text-brand-600">{complianceRate}%</p>
+                  </div>
+                  <div className="rounded-xl border border-sand-200 bg-white/50 p-4">
+                    <p className="text-xs uppercase tracking-wide text-ink-300">Total Hours</p>
+                    <p className="mt-1 text-2xl font-bold text-ink-500">{totalHours.toFixed(1)}</p>
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <h3 className="text-sm font-semibold text-ink-500">Productivity Metrics</h3>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="rounded-lg bg-blue-50 px-4 py-3">
+                      <p className="text-xs text-blue-700">Mails Processed</p>
+                      <p className="mt-1 text-xl font-bold text-blue-900">{totalMails}</p>
+                    </div>
+                    <div className="rounded-lg bg-green-50 px-4 py-3">
+                      <p className="text-xs text-green-700">Data Entries</p>
+                      <p className="mt-1 text-xl font-bold text-green-900">{totalData}</p>
+                    </div>
+                    <div className="rounded-lg bg-purple-50 px-4 py-3">
+                      <p className="text-xs text-purple-700">LinkedIn Activities</p>
+                      <p className="mt-1 text-xl font-bold text-purple-900">{totalLinkedin}</p>
+                    </div>
+                    <div className="rounded-lg bg-orange-50 px-4 py-3">
+                      <p className="text-xs text-orange-700">Follow-ups</p>
+                      <p className="mt-1 text-xl font-bold text-orange-900">{totalFollowUps}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-8 border-t border-sand-200 pt-6 text-center text-xs text-ink-300">
+                <p>This is a system-generated salary slip. No signature required.</p>
+                <p className="mt-1">For queries, contact HR at hr@ciomogul.com</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </>
+    )
+  }
+
   if (isLoginRoute) {
     return (
       <div className="min-h-screen p-6 md:p-10">
@@ -646,7 +1062,14 @@ function App() {
               <h1 className="section-title">User Dashboard</h1>
               <p className="mt-2 text-sm text-ink-300">Welcome back, {loggedUser.name}.</p>
             </div>
-            <div className="glass-panel rounded-2xl p-4 shadow-lift">
+            <div className="flex gap-3">
+              <a
+                href="/salary"
+                className="glass-panel rounded-2xl px-4 py-3 shadow-lift text-sm font-semibold text-brand-600 hover:bg-brand-50"
+              >
+                View Salary Slip
+              </a>
+              <div className="glass-panel rounded-2xl p-4 shadow-lift">
               <div className="flex items-center justify-between gap-3 text-sm">
                 <span className="text-ink-300">Month</span>
                 <input
@@ -656,6 +1079,7 @@ function App() {
                   onChange={(event) => setSelectedMonth(event.target.value)}
                 />
               </div>
+            </div>
             </div>
           </div>
 
@@ -1232,9 +1656,217 @@ function App() {
                 )}
               </div>
             </div>
+
+            <div className="mt-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-ink-500">Monthly Salary</h3>
+                <button
+                  className="rounded-lg bg-brand-600 px-3 py-1 text-xs font-semibold text-white"
+                  onClick={() => openSalaryModal('edit')}
+                >
+                  {monthlySalaries.find((s) => s.userId === selectedUserId && s.month === selectedMonth)
+                    ? 'Edit Salary'
+                    : 'Set Salary'}
+                </button>
+              </div>
+              <div className="mt-3 rounded-2xl border border-sand-200 p-4">
+                {monthlySalaries.find((s) => s.userId === selectedUserId && s.month === selectedMonth) ? (
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-ink-400">Base Salary</span>
+                      <span className="font-semibold text-ink-500">
+                        ₹{monthlySalaries
+                          .find((s) => s.userId === selectedUserId && s.month === selectedMonth)
+                          ?.baseSalary.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-ink-400">Performance Bonus</span>
+                      <span className="font-semibold text-green-700">
+                        ₹{monthlySalaries
+                          .find((s) => s.userId === selectedUserId && s.month === selectedMonth)
+                          ?.performanceBonus.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="border-t border-sand-200 pt-2">
+                      <div className="flex justify-between font-bold">
+                        <span className="text-ink-500">Net Salary</span>
+                        <span className="text-brand-600">
+                          ₹{(() => {
+                            const sal = monthlySalaries.find(
+                              (s) => s.userId === selectedUserId && s.month === selectedMonth
+                            )
+                            if (!sal) return '0'
+                            const gross =
+                              sal.baseSalary +
+                              sal.hra +
+                              sal.transportAllowance +
+                              sal.otherAllowance +
+                              sal.performanceBonus
+                            const deductions = sal.pfDeduction + sal.taxDeduction + sal.otherDeduction
+                            return (gross - deductions).toLocaleString()
+                          })()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-ink-300">No salary set for this month.</p>
+                )}
+              </div>
+            </div>
           </section>
         </div>
       </div>
+
+      {showSalaryModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="glass-panel w-full max-w-2xl rounded-3xl p-6 shadow-lift">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-ink-500">
+                Manage Monthly Salary - {selectedMonth}
+              </h3>
+              <button className="text-sm text-ink-300" onClick={() => setShowSalaryModal(false)}>
+                Close
+              </button>
+            </div>
+            <form className="mt-4 grid gap-4 sm:grid-cols-2" onSubmit={handleSalarySubmit}>
+              <div>
+                <label className="text-xs font-semibold text-ink-400">Base Salary</label>
+                <input
+                  className="input-field mt-1"
+                  type="number"
+                  placeholder="50000"
+                  required
+                  min="0"
+                  step="0.01"
+                  value={salaryForm.baseSalary}
+                  onChange={(e) => setSalaryForm((prev) => ({ ...prev, baseSalary: e.target.value }))}
+                />
+                {salaryFormErrors.baseSalary && (
+                  <p className="mt-1 text-xs text-red-500">{salaryFormErrors.baseSalary}</p>
+                )}
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-ink-400">HRA</label>
+                <input
+                  className="input-field mt-1"
+                  type="number"
+                  placeholder="15000"
+                  required
+                  min="0"
+                  step="0.01"
+                  value={salaryForm.hra}
+                  onChange={(e) => setSalaryForm((prev) => ({ ...prev, hra: e.target.value }))}
+                />
+                {salaryFormErrors.hra && <p className="mt-1 text-xs text-red-500">{salaryFormErrors.hra}</p>}
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-ink-400">Transport Allowance</label>
+                <input
+                  className="input-field mt-1"
+                  type="number"
+                  placeholder="3000"
+                  required
+                  min="0"
+                  step="0.01"
+                  value={salaryForm.transportAllowance}
+                  onChange={(e) => setSalaryForm((prev) => ({ ...prev, transportAllowance: e.target.value }))}
+                />
+                {salaryFormErrors.transportAllowance && (
+                  <p className="mt-1 text-xs text-red-500">{salaryFormErrors.transportAllowance}</p>
+                )}
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-ink-400">Other Allowance</label>
+                <input
+                  className="input-field mt-1"
+                  type="number"
+                  placeholder="2000"
+                  required
+                  min="0"
+                  step="0.01"
+                  value={salaryForm.otherAllowance}
+                  onChange={(e) => setSalaryForm((prev) => ({ ...prev, otherAllowance: e.target.value }))}
+                />
+                {salaryFormErrors.otherAllowance && (
+                  <p className="mt-1 text-xs text-red-500">{salaryFormErrors.otherAllowance}</p>
+                )}
+              </div>
+              <div className="sm:col-span-2">
+                <label className="text-xs font-semibold text-green-700">Performance Bonus (if applicable)</label>
+                <input
+                  className="input-field mt-1"
+                  type="number"
+                  placeholder="0"
+                  required
+                  min="0"
+                  step="0.01"
+                  value={salaryForm.performanceBonus}
+                  onChange={(e) => setSalaryForm((prev) => ({ ...prev, performanceBonus: e.target.value }))}
+                />
+                {salaryFormErrors.performanceBonus && (
+                  <p className="mt-1 text-xs text-red-500">{salaryFormErrors.performanceBonus}</p>
+                )}
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-ink-400">PF Deduction</label>
+                <input
+                  className="input-field mt-1"
+                  type="number"
+                  placeholder="6000"
+                  required
+                  min="0"
+                  step="0.01"
+                  value={salaryForm.pfDeduction}
+                  onChange={(e) => setSalaryForm((prev) => ({ ...prev, pfDeduction: e.target.value }))}
+                />
+                {salaryFormErrors.pfDeduction && (
+                  <p className="mt-1 text-xs text-red-500">{salaryFormErrors.pfDeduction}</p>
+                )}
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-ink-400">Tax Deduction (TDS)</label>
+                <input
+                  className="input-field mt-1"
+                  type="number"
+                  placeholder="5000"
+                  required
+                  min="0"
+                  step="0.01"
+                  value={salaryForm.taxDeduction}
+                  onChange={(e) => setSalaryForm((prev) => ({ ...prev, taxDeduction: e.target.value }))}
+                />
+                {salaryFormErrors.taxDeduction && (
+                  <p className="mt-1 text-xs text-red-500">{salaryFormErrors.taxDeduction}</p>
+                )}
+              </div>
+              <div className="sm:col-span-2">
+                <label className="text-xs font-semibold text-ink-400">Other Deductions</label>
+                <input
+                  className="input-field mt-1"
+                  type="number"
+                  placeholder="0"
+                  required
+                  min="0"
+                  step="0.01"
+                  value={salaryForm.otherDeduction}
+                  onChange={(e) => setSalaryForm((prev) => ({ ...prev, otherDeduction: e.target.value }))}
+                />
+                {salaryFormErrors.otherDeduction && (
+                  <p className="mt-1 text-xs text-red-500">{salaryFormErrors.otherDeduction}</p>
+                )}
+              </div>
+              {salaryFormErrors.general && <p className="text-xs text-red-500">{salaryFormErrors.general}</p>}
+              <div className="sm:col-span-2">
+                <button className="w-full rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white">
+                  Save Salary Details
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {showUserModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">

@@ -56,5 +56,8 @@ Leave
 - DELETE `/leave/:id` (admin)
 
 ## Notes
-- Supabase tables use snake_case columns: `employee_id`, `leave_balance`, `is_active`, etc.
+- Supabase tables use snake_case columns: `employee_id`, `casual_balance`, `sick_balance`, `is_active`, etc.
+- Users table includes default salary fields: `base_salary`, `hra`, `transport_allowance`, `other_allowance`, `pf_deduction`, `tax_deduction`, `other_deduction`
+- Monthly salaries tracked in `monthly_salaries` table with month-specific values and `performance_bonus`
+- Admin can set different salary amounts each month with optional performance bonus
 - Frontend currently uses mock data and does not call these APIs unless wired.
