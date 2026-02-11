@@ -2,6 +2,10 @@
 
 Attendance, productivity, and leave management system with admin and user dashboards.
 
+**Organization:** CIO MOGUL GLOBAL PUBLICATION PRIVATE LIMITED  
+**UAN:** U58132MH2025PTC459494  
+**Address:** Sno. 80/1 Sai Nagari Bld, B/iwadmukhwadi Bhosari, Punawale, Pune, Pune City, Maharashtra, India, 411033
+
 ## Tech Stack
 - **Backend**: NestJS + Supabase (REST API, JWT auth)
 - **Frontend**: React + Vite + Tailwind CSS
@@ -191,6 +195,8 @@ Open:
 - Apply for leave (Casual, Sick, Paid)
 - View monthly attendance and leave history
 - Generate salary slip with performance summary (print/save as PDF)
+- Select any month to view salary slip with earnings, deductions, and performance data
+- Salary slip includes organization details, UAN number, and authorized signature section
 
 ### API (Backend)
 - JWT authentication with role-based guards
@@ -258,6 +264,11 @@ Open:
 - Frontend currently uses mock data; wire `VITE_API_URL` to connect to backend.
 - Supabase RLS policies allow only service_role access (backend uses service key).
 - All form fields are required in the UI.
+- Users can select any month to view their salary slip:
+  - If admin has set month-specific salary, shows that data
+  - Otherwise, shows default salary structure from user profile
+  - If no salary data exists at all, displays "No Salary Data" message
+  - Performance metrics calculated from attendance records for selected month
 
 ---
 

@@ -131,6 +131,7 @@ const initialMonthlySalaries = [
     id: 'MS-001',
     userId: 'CIO-0001',
     month: '2026-02',
+    workingDays: 22,
     baseSalary: 50000,
     hra: 15000,
     transportAllowance: 3000,
@@ -144,6 +145,7 @@ const initialMonthlySalaries = [
     id: 'MS-002',
     userId: 'CIO-0002',
     month: '2026-02',
+    workingDays: 22,
     baseSalary: 55000,
     hra: 16500,
     transportAllowance: 3000,
@@ -157,6 +159,7 @@ const initialMonthlySalaries = [
     id: 'MS-003',
     userId: 'CIO-0004',
     month: '2026-02',
+    workingDays: 22,
     baseSalary: 60000,
     hra: 18000,
     transportAllowance: 3500,
@@ -215,7 +218,9 @@ function App() {
   const [userAttendanceErrors, setUserAttendanceErrors] = useState({})
   const [userLeaveForm, setUserLeaveForm] = useState({ type: 'Casual', from: '', to: '', reason: '' })
   const [userLeaveErrors, setUserLeaveErrors] = useState({})
+  const [salarySlipMonth, setSalarySlipMonth] = useState(currentMonth)
   const [salaryForm, setSalaryForm] = useState({
+    workingDays: '',
     baseSalary: '',
     hra: '',
     transportAllowance: '',
@@ -680,6 +685,7 @@ function App() {
     )
     if (mode === 'add' || !existing) {
       setSalaryForm({
+        workingDays: '22',
         baseSalary: '',
         hra: '',
         transportAllowance: '',
@@ -691,6 +697,7 @@ function App() {
       })
     } else {
       setSalaryForm({
+        workingDays: String(existing.workingDays || 22),
         baseSalary: String(existing.baseSalary),
         hra: String(existing.hra),
         transportAllowance: String(existing.transportAllowance),
@@ -706,6 +713,9 @@ function App() {
 
   const validateSalaryForm = () => {
     const errors = {}
+    if (!salaryForm.workingDays || Number.isNaN(Number(salaryForm.workingDays)) || Number(salaryForm.workingDays) < 1 || Number(salaryForm.workingDays) > 31) {
+      errors.workingDays = 'Valid working days required (1-31).'
+    }
     if (!salaryForm.baseSalary || Number.isNaN(Number(salaryForm.baseSalary)) || Number(salaryForm.baseSalary) < 0) {
       errors.baseSalary = 'Valid base salary required.'
     }
@@ -749,6 +759,7 @@ function App() {
           s.id === existing.id
             ? {
                 ...s,
+                workingDays: Number(salaryForm.workingDays),
                 baseSalary: Number(salaryForm.baseSalary),
                 hra: Number(salaryForm.hra),
                 transportAllowance: Number(salaryForm.transportAllowance),
@@ -766,6 +777,7 @@ function App() {
         id: getNextSalaryId(monthlySalaries),
         userId: selectedUserId,
         month: selectedMonth,
+        workingDays: Number(salaryForm.workingDays),
         baseSalary: Number(salaryForm.baseSalary),
         hra: Number(salaryForm.hra),
         transportAllowance: Number(salaryForm.transportAllowance),
@@ -801,20 +813,22 @@ function App() {
       )
     }
 
-    const monthYear = new Date(selectedMonth + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-    const loggedUserMonthAttendance = filteredAttendance.filter((record) => record.userId === loggedUserId)
-    const totalDays = loggedUserMonthAttendance.length
-    const totalHours = loggedUserMonthAttendance.reduce((sum, record) => sum + record.hours, 0)
+    const monthYear = new Date(salarySlipMonth + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+    const salaryMonthAttendance = attendance.filter(
+      (record) => record.userId === loggedUserId && record.date.startsWith(salarySlipMonth)
+    )
+    const totalDays = salaryMonthAttendance.length
+    const totalHours = salaryMonthAttendance.reduce((sum, record) => sum + record.hours, 0)
     const avgHours = totalDays ? (totalHours / totalDays).toFixed(1) : 0
-    const complianceDays = loggedUserMonthAttendance.filter((rec) => rec.hours >= 9).length
+    const complianceDays = salaryMonthAttendance.filter((rec) => rec.hours >= 9).length
     const complianceRate = totalDays ? Math.round((complianceDays / totalDays) * 100) : 0
-    const totalMails = loggedUserMonthAttendance.reduce((sum, rec) => sum + rec.mails, 0)
-    const totalData = loggedUserMonthAttendance.reduce((sum, rec) => sum + rec.data, 0)
-    const totalLinkedin = loggedUserMonthAttendance.reduce((sum, rec) => sum + rec.linkedin, 0)
-    const totalFollowUps = loggedUserMonthAttendance.reduce((sum, rec) => sum + rec.followUps, 0)
+    const totalMails = salaryMonthAttendance.reduce((sum, rec) => sum + rec.mails, 0)
+    const totalData = salaryMonthAttendance.reduce((sum, rec) => sum + rec.data, 0)
+    const totalLinkedin = salaryMonthAttendance.reduce((sum, rec) => sum + rec.linkedin, 0)
+    const totalFollowUps = salaryMonthAttendance.reduce((sum, rec) => sum + rec.followUps, 0)
 
     const monthlySalary = monthlySalaries.find(
-      (s) => s.userId === loggedUserId && s.month === selectedMonth
+      (s) => s.userId === loggedUserId && s.month === salarySlipMonth
     )
     const baseSalary = monthlySalary?.baseSalary || loggedUser.baseSalary || 0
     const hra = monthlySalary?.hra || loggedUser.hra || 0
@@ -836,40 +850,113 @@ function App() {
             .no-print { display: none !important; }
             body { background: white; }
             .salary-slip-container { box-shadow: none; padding: 20px; }
+            .font-signature { font-family: 'Brush Script MT', cursive; }
+          }
+          .font-signature { 
+            font-family: 'Brush Script MT', 'Lucida Handwriting', cursive; 
+            font-style: italic;
           }
         `}</style>
         <div className="min-h-screen p-6 md:p-10">
           <div className="mx-auto max-w-4xl">
-            <div className="no-print mb-6 flex items-center justify-between">
-              <a
-                href="/user"
-                className="inline-flex items-center gap-2 text-sm font-semibold text-ink-500 hover:text-brand-600"
-              >
-                ← Back to Dashboard
-              </a>
-              <button
-                onClick={() => window.print()}
-                className="rounded-xl bg-brand-600 px-6 py-2 text-sm font-semibold text-white shadow hover:bg-brand-700"
-              >
-                Print / Save as PDF (Ctrl+P)
-              </button>
-            </div>
-            
-            <div className="salary-slip-container glass-panel rounded-3xl p-8 shadow-lift">
-              <div className="border-b border-sand-200 pb-6">
-                <div className="flex items-start justify-between">
+            <div className="no-print mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <a
+                  href="/user"
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-ink-500 hover:text-brand-600"
+                >
+                  ← Back to Dashboard
+                </a>
+                <button
+                  onClick={() => window.print()}
+                  className="rounded-xl bg-brand-600 px-6 py-2 text-sm font-semibold text-white shadow hover:bg-brand-700"
+                >
+                  Print / Save as PDF (Ctrl+P)
+                </button>
+              </div>
+              <div className="glass-panel rounded-2xl p-4 shadow-lift">
+                <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm uppercase tracking-[0.3em] text-ink-300">CIO Mogul</p>
-                    <h1 className="mt-2 text-3xl font-bold text-ink-500">Salary Slip</h1>
-                    <p className="mt-1 text-sm text-ink-300">{monthYear}</p>
+                    <p className="text-sm font-semibold text-ink-500">Select Month</p>
+                    <p className="text-xs text-ink-300">Choose a month to view salary slip</p>
                   </div>
-                  <div className="text-right text-sm">
-                    <p className="font-semibold text-ink-500">{loggedUser.name}</p>
-                    <p className="text-ink-300">{loggedUser.id}</p>
-                    <p className="text-ink-300">{loggedUser.email}</p>
-                  </div>
+                  <input
+                    type="month"
+                    className="rounded-lg border border-sand-200 bg-white/80 px-4 py-2 text-sm font-semibold text-ink-500"
+                    value={salarySlipMonth}
+                    onChange={(event) => setSalarySlipMonth(event.target.value)}
+                  />
                 </div>
               </div>
+            </div>
+            
+            {baseSalary === 0 && hra === 0 ? (
+              <div className="glass-panel rounded-3xl p-8 shadow-lift">
+                <div className="text-center py-12">
+                  <p className="text-lg font-bold text-brand-600">CIO MOGUL GLOBAL PUBLICATION PRIVATE LIMITED</p>
+                  <h1 className="mt-3 text-2xl font-bold text-ink-500">No Salary Data</h1>
+                  <p className="mt-3 text-ink-400">
+                    No salary information available for {monthYear}.
+                  </p>
+                  <p className="mt-2 text-sm text-ink-300">
+                    Please contact HR or select a different month.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="salary-slip-container glass-panel rounded-3xl p-8 shadow-lift">
+                {!monthlySalary && (
+                  <div className="no-print mb-4 rounded-lg bg-yellow-50 border border-yellow-200 px-4 py-3">
+                    <p className="text-sm text-yellow-800">
+                      📋 Showing default salary structure. Admin has not set specific salary for {monthYear}.
+                    </p>
+                  </div>
+                )}
+                <div className="border-b border-sand-200 pb-6">
+                  <div className="text-center mb-6">
+                    <h2 className="text-2xl font-bold text-brand-600">CIO MOGUL GLOBAL PUBLICATION PRIVATE LIMITED</h2>
+                    <p className="text-xs text-ink-400 mt-2">UAN: U58132MH2025PTC459494</p>
+                    <p className="text-xs text-ink-400 mt-1">
+                      Sno. 80/1 Sai Nagari Bld, B/iwadmukhwadi Bhosari, Punawale, Pune, Pune City, Maharashtra, India, 411033
+                    </p>
+                  </div>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-sm uppercase tracking-[0.3em] text-ink-300">Salary Slip</p>
+                      <h1 className="mt-2 text-2xl font-bold text-ink-500">{monthYear}</h1>
+                    </div>
+                    <div className="text-right text-sm">
+                      <p className="text-xs text-ink-300">Employee Details</p>
+                      <p className="font-semibold text-ink-500 mt-1">{loggedUser.name}</p>
+                      <p className="text-ink-300">{loggedUser.id}</p>
+                      <p className="text-ink-300">{loggedUser.email}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 rounded-2xl border border-sand-200 overflow-hidden">
+                  <div className="bg-sand-50 px-4 py-2">
+                    <h3 className="text-sm font-semibold text-ink-500">Salary Details</h3>
+                  </div>
+                  <div className="bg-white">
+                    <div className="grid grid-cols-2 border-b border-sand-100">
+                      <div className="px-4 py-2 text-xs text-ink-400 border-r border-sand-100">Pay Period</div>
+                      <div className="px-4 py-2 text-sm font-semibold text-ink-500">{monthYear}</div>
+                    </div>
+                    <div className="grid grid-cols-2 border-b border-sand-100">
+                      <div className="px-4 py-2 text-xs text-ink-400 border-r border-sand-100">Working Days</div>
+                      <div className="px-4 py-2 text-sm font-semibold text-ink-500">{monthlySalary?.workingDays || 22} days</div>
+                    </div>
+                    <div className="grid grid-cols-2 border-b border-sand-100">
+                      <div className="px-4 py-2 text-xs text-ink-400 border-r border-sand-100">Days Attended</div>
+                      <div className="px-4 py-2 text-sm font-semibold text-ink-500">{totalDays} days</div>
+                    </div>
+                    <div className="grid grid-cols-2">
+                      <div className="px-4 py-2 text-xs text-ink-400 border-r border-sand-100">Generated On</div>
+                      <div className="px-4 py-2 text-sm font-semibold text-ink-500">{new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
+                    </div>
+                  </div>
+                </div>
 
               <div className="mt-8 grid gap-8 md:grid-cols-2">
                 <div>
@@ -982,11 +1069,27 @@ function App() {
                 </div>
               </div>
 
-              <div className="mt-8 border-t border-sand-200 pt-6 text-center text-xs text-ink-300">
-                <p>This is a system-generated salary slip. No signature required.</p>
-                <p className="mt-1">For queries, contact HR at hr@ciomogul.com</p>
+              <div className="mt-8 border-t border-sand-200 pt-6">
+                <div className="flex justify-end mb-6">
+                  <div className="text-center">
+                    <div className="mb-2 text-lg font-bold text-brand-600">CIO MOGUL GLOBAL PUBLICATION PVT. LTD.</div>
+                    <div className="border-2 border-brand-400 rounded-lg px-8 py-4 bg-white relative">
+                      <div className="text-3xl font-signature text-brand-600 transform -rotate-6 mb-2">Signature</div>
+                      <div className="text-sm font-semibold text-ink-500">Director</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-center text-xs text-ink-300 space-y-1">
+                  <p className="font-semibold text-ink-400">CIO MOGUL GLOBAL PUBLICATION PRIVATE LIMITED</p>
+                  <p>UAN: U58132MH2025PTC459494</p>
+                  <p>Sno. 80/1 Sai Nagari Bld, B/iwadmukhwadi Bhosari, Punawale, Pune, Pune City,</p>
+                  <p>Maharashtra, India, 411033</p>
+                  <p className="mt-3 text-ink-300">This is a system-generated salary slip.</p>
+                  <p>For queries, contact HR at hr@ciomogul.com</p>
+                </div>
               </div>
-            </div>
+              </div>
+            )}
           </div>
         </div>
       </>
@@ -1731,6 +1834,22 @@ function App() {
               </button>
             </div>
             <form className="mt-4 grid gap-4 sm:grid-cols-2" onSubmit={handleSalarySubmit}>
+              <div>
+                <label className="text-xs font-semibold text-ink-400">Number of Working Days</label>
+                <input
+                  className="input-field mt-1"
+                  type="number"
+                  placeholder="22"
+                  required
+                  min="1"
+                  max="31"
+                  value={salaryForm.workingDays}
+                  onChange={(e) => setSalaryForm((prev) => ({ ...prev, workingDays: e.target.value }))}
+                />
+                {salaryFormErrors.workingDays && (
+                  <p className="mt-1 text-xs text-red-500">{salaryFormErrors.workingDays}</p>
+                )}
+              </div>
               <div>
                 <label className="text-xs font-semibold text-ink-400">Base Salary</label>
                 <input
