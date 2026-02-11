@@ -1,16 +1,39 @@
-# React + Vite
+# CIO Mogul Tru Time - Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Overview
+React + Tailwind dashboard for admin and user workflows. Includes month filters, compliance metrics, CSV export, and forms for attendance and leave. Current UI uses mock data (frontend-only CRUD).
 
-Currently, two official plugins are available:
+## Routes
+- `/` Welcome page
+- `/dashboard` Admin dashboard (password gate)
+- `/login` User login
+- `/user` User dashboard
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Admin dashboard
+- View all user records by month
+- Click a user to see leaves + Tru Time records
+- CSV export (monthly summary)
+- Add/Edit/Delete users (frontend-only)
+- Add/Edit/Delete leaves (frontend-only)
+- Casual and Sick balances with monthly sick lapse
 
-## React Compiler
+## User dashboard
+- Enter daily Tru Time (login/logout + productivity fields)
+- Apply for leave
+- View monthly attendance and leave history
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Admin password
+Set in `frontend/.env`:
+```
+VITE_DASHBOARD_PASSWORD=ciomogul
+```
 
-## Expanding the ESLint configuration
+## Run locally
+```
+npm install
+npm run dev
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Notes
+- All form fields are required.
+- Changes in the UI update immediately in the browser but are not persisted until API wiring is added.
