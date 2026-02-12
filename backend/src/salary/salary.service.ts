@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { CreateMonthlySalaryDto } from './dto/create-salary.dto';
 import { UpdateMonthlySalaryDto } from './dto/update-salary.dto';
@@ -8,6 +8,44 @@ export class SalaryService {
   constructor(private supabase: SupabaseService) {}
 
   async create(createSalaryDto: CreateMonthlySalaryDto) {
+    // Validation 1: Check for duplicate salary record for same user/month
+    const { data: existing, error: checkError } = await this.supabase.client
+      .from('monthly_salaries')
+      .select('id,month')
+      .eq('user_id', createSalaryDto.userId)
+      .eq('month', createSalaryDto.month)
+      .maybeSingle();
+
+    if (checkError) {
+      throw new BadRequestException('Unable to validate salary record');
+    }
+
+    if (existing) {
+      throw new BadRequestException(
+        `Salary record already exists for this user in ${createSalaryDto.month}. Please edit the existing record instead of creating a duplicate.`
+      );
+    }
+
+    // Validation 2: Prevent salary creation for future months (beyond next month)
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth() + 1; // getMonth() returns 0-11
+    const [year, month] = createSalaryDto.month.split('-').map(Number);
+    
+    const monthsDiff = (year - currentYear) * 12 + (month - currentMonth);
+    if (monthsDiff > 1) {
+      throw new BadRequestException(
+        'Cannot create salary records for months beyond next month'
+      );
+    }
+
+    // Validation 3: Prevent salary creation for months older than 12 months
+    if (monthsDiff < -12) {
+      throw new BadRequestException(
+        'Cannot create salary records for months older than 12 months'
+      );
+    }
+
     const { data, error } = await this.supabase.client
       .from('monthly_salaries')
       .insert({

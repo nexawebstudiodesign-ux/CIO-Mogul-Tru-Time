@@ -666,9 +666,10 @@ export default function AdminDashboard() {
         setMonthlySalaries((prev) => [newSalary, ...prev])
       }
       setShowSalaryModal(false)
+      setSalaryFormErrors({})
     } catch (error) {
       console.error('Failed to save salary:', error)
-      setSalaryFormErrors({ general: 'Failed to save salary. Please try again.' })
+      setSalaryFormErrors({ general: error.message || 'Failed to save salary. Please try again.' })
     }
   }
 
@@ -1148,9 +1149,18 @@ export default function AdminDashboard() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="glass-panel w-full max-w-2xl rounded-3xl p-6 shadow-lift">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-ink-500">
-                Manage Monthly Salary - {selectedMonth}
-              </h3>
+              <div>
+                <h3 className="text-lg font-semibold text-ink-500">
+                  {monthlySalaries.find((s) => s.userId === selectedUserId && s.month === selectedMonth)
+                    ? `Edit Salary - ${selectedMonth}`
+                    : `Create Salary - ${selectedMonth}`}
+                </h3>
+                <p className="text-xs text-ink-300 mt-1">
+                  {monthlySalaries.find((s) => s.userId === selectedUserId && s.month === selectedMonth)
+                    ? '✏️ Updating existing salary record'
+                    : '➕ Creating new salary record'}
+                </p>
+              </div>
               <button className="text-sm text-ink-300" onClick={() => setShowSalaryModal(false)}>
                 Close
               </button>
@@ -1301,7 +1311,9 @@ export default function AdminDashboard() {
               {salaryFormErrors.general && <p className="text-xs text-red-500">{salaryFormErrors.general}</p>}
               <div className="sm:col-span-2">
                 <button className="w-full rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white">
-                  Save Salary Details
+                  {monthlySalaries.find((s) => s.userId === selectedUserId && s.month === selectedMonth)
+                    ? 'Update Salary Record'
+                    : 'Create Salary Record'}
                 </button>
               </div>
             </form>
