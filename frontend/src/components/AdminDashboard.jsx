@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import { apiService } from '../utils/api'
 import {
@@ -10,6 +11,7 @@ import {
 } from '../utils/helpers'
 
 export default function AdminDashboard() {
+  const navigate = useNavigate()
   const {
     users,
     setUsers,
@@ -715,12 +717,26 @@ export default function AdminDashboard() {
       ) : (
       <div className="mx-auto max-w-6xl">
         <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-sm uppercase tracking-[0.3em] text-ink-300">CIO Mogul</p>
-            <h1 className="section-title">Admin Performance Dashboard</h1>
-            <p className="mt-2 max-w-xl text-sm text-ink-300">
-              Review all user records, drill into individual leave history, and track monthly 9-hour compliance.
-            </p>
+          <div className="flex-1">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm uppercase tracking-[0.3em] text-ink-300">CIO Mogul</p>
+                <h1 className="section-title">Admin Performance Dashboard</h1>
+                <p className="mt-2 max-w-xl text-sm text-ink-300">
+                  Review all user records, drill into individual leave history, and track monthly 9-hour compliance.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  apiService.logout()
+                  localStorage.removeItem('ciomogul_admin_ok')
+                  navigate('/')
+                }}
+                className="rounded-xl bg-red-500 hover:bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow"
+              >
+                Logout
+              </button>
+            </div>
           </div>
           <div className="glass-panel flex w-full flex-col gap-3 rounded-2xl p-4 shadow-lift md:w-auto md:min-w-[280px]">
             <div className="flex items-center justify-between text-sm">

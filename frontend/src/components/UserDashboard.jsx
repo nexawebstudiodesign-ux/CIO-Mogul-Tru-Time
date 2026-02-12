@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
+import { apiService } from '../utils/api'
 
 export default function UserDashboard() {
   const navigate = useNavigate()
@@ -231,6 +232,15 @@ export default function UserDashboard() {
             <p className="mt-2 text-sm text-ink-300">Welcome back, {loggedUser.name}.</p>
           </div>
           <div className="flex gap-3">
+            <button
+              onClick={() => {
+                apiService.logout()
+                navigate('/')
+              }}
+              className="glass-panel rounded-2xl px-4 py-3 shadow-lift text-sm font-semibold text-red-600 hover:bg-red-50"
+            >
+              Logout
+            </button>
             <a
               href="/salary"
               className="glass-panel rounded-2xl px-4 py-3 shadow-lift text-sm font-semibold text-brand-600 hover:bg-brand-50"

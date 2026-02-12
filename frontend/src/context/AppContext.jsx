@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useMemo } from 'react'
+import { createContext, useContext, useState, useMemo, useEffect } from 'react'
+import { apiService } from '../utils/api'
 import {
   currentMonth,
   initialUsers,
@@ -23,9 +24,33 @@ export function AppProvider({ children }) {
     localStorage.getItem('ciomogul_admin_ok') === 'true',
   )
 
-  // User auth
-  const loggedUserId = localStorage.getItem('ciomogul_user_id') || ''
-  const loggedUser = users.find((user) => user.id === loggedUserId)
+  // User auth - initialize from localStorage
+  const [loggedUserId, setLoggedUserId] = useState(localStorage.getItem('ciomogul_user_id') || '')
+  const [loggedUser, setLoggedUser] = useState(() => {
+    const stored = localStorage.getItem('ciomogul_user')
+    return stored ? JSON.parse(stored) : null
+  })
+
+  // Fetch logged-in user data on mount if token exists
+  useEffect(() => {
+    const token = localStorage.getItem('ciomogul_token')
+    const userId = localStorage.getItem('ciomogul_user_id')
+    
+    if (token && userId && !loggedUser) {
+      apiService.getMe()
+        .then(userData => {
+          setLoggedUser(userData)
+          localStorage.setItem('ciomogul_user', JSON.stringify(userData))
+        })
+        .catch(err => {
+          console.error('Failed to fetch user data:', err)
+          // Clear invalid session
+          localStorage.removeItem('ciomogul_token')
+          localStorage.removeItem('ciomogul_user_id')
+          localStorage.removeItem('ciomogul_user')
+        })
+    }
+  }, [])
 
   // Computed data
   const filteredAttendance = useMemo(
@@ -74,7 +99,9 @@ export function AppProvider({ children }) {
     isAdminAuthorized,
     setIsAdminAuthorized,
     loggedUser,
+    setLoggedUser,
     loggedUserId,
+    setLoggedUserId,
     filteredAttendance,
     filteredLeaves,
     monthSummary,
