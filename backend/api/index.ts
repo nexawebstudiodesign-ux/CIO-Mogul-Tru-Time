@@ -7,34 +7,45 @@ import { AppModule } from '../src/app.module';
 let cachedApp: any;
 
 async function bootstrap() {
+  // In serverless, create a new Express app for each invocation
+  // Don't cache the full app as it causes issues with Express 4.x adapter
+  const expressApp = express();
+  
+  // Add built-in middleware directly
+  expressApp.use(express.json({ limit: '50mb' }));
+  expressApp.use(express.urlencoded({ limit: '50mb', extended: true }));
+  
+  // Only cache if not already cached
   if (!cachedApp) {
-    const expressApp = express();
-    const adapter = new ExpressAdapter(expressApp);
-    
-    const app = await NestFactory.create(AppModule, adapter, {
-      logger: ['error', 'warn'],
-    });
+    try {
+      const adapter = new ExpressAdapter(expressApp);
+      cachedApp = await NestFactory.create(AppModule, adapter, {
+        logger: ['error', 'warn'],
+        bufferLogs: true,
+      });
 
-    app.enableCors({
-      origin: true,
-      credentials: true,
-    });
+      cachedApp.enableCors({
+        origin: true,
+        credentials: true,
+      });
 
-    app.useGlobalPipes(
-      new ValidationPipe({
-        whitelist: true,
-        forbidNonWhitelisted: true,
-        transform: true,
-      }),
-    );
+      cachedApp.useGlobalPipes(
+        new ValidationPipe({
+          whitelist: true,
+          forbidNonWhitelisted: true,
+          transform: true,
+        }),
+      );
 
-    app.setGlobalPrefix('api');
-    await app.init();
-    
-    cachedApp = expressApp;
+      cachedApp.setGlobalPrefix('api');
+      await cachedApp.init();
+    } catch (error) {
+      console.error('Failed to bootstrap NestJS app:', error);
+      throw error;
+    }
   }
 
-  return cachedApp;
+  return expressApp;
 }
 
 export default async (req: Request, res: Response) => {
@@ -45,7 +56,8 @@ export default async (req: Request, res: Response) => {
     console.error('Serverless function error:', error);
     return res.status(500).json({
       error: 'Internal Server Error',
-      message: error.message || 'An unexpected error occurred',
+      message: error instanceof Error ? error.message : 'An unexpected error occurred',
+      timestamp: new Date().toISOString(),
     });
   }
 };
