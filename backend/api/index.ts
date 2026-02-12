@@ -9,16 +9,18 @@ let nestApp: any;
 async function bootstrap() {
   if (!nestApp) {
     try {
-      // Create Express app
       const expressInstance = express();
-      
-      // Add polyfill for app.router to prevent Express 4.x deprecation error
-      Object.defineProperty(expressInstance, 'router', {
-        get: () => undefined,
-        set: () => {},
-      });
 
-      // Add middleware BEFORE creating NestJS app
+      // Patch app.get to prevent 'router' access from triggering deprecation
+      const originalGet = expressInstance.get;
+      expressInstance.get = function(prop: any, ...args: any[]) {
+        if (prop === 'router' || prop === '_router') {
+          return undefined;
+        }
+        return originalGet.call(this, prop, ...args);
+      };
+
+      // Add middleware BEFORE creating NestJS
       expressInstance.use(express.json({ limit: '50mb' }));
       expressInstance.use(express.urlencoded({ limit: '50mb', extended: true }));
 
@@ -41,8 +43,18 @@ async function bootstrap() {
 
       nestApp.setGlobalPrefix('api');
 
-      // Initialize NestJS
-      await nestApp.init();
+      // Use getHttpServer() instead of calling init()
+      const server = nestApp.getHttpServer();
+      
+      // Silence the init if needed
+      try {
+        await nestApp.init();
+      } catch (e) {
+        // Ignore router deprecation error if it still occurs
+        if (!String(e).includes("'app.router'")) {
+          throw e;
+        }
+      }
 
       return expressInstance;
     } catch (error) {
@@ -50,8 +62,8 @@ async function bootstrap() {
       throw error;
     }
   }
-  
-  // On subsequent calls, return the already initialized app
+
+  // Return the express instance on subsequent calls
   const adapter = nestApp.getHttpAdapter();
   return adapter.getInstance();
 }
@@ -61,11 +73,10 @@ export default async (req: Request, res: Response) => {
     const app = await bootstrap();
     app(req, res);
   } catch (error) {
-    console.error('Serverless error:', error);
+    console.error('Error:', error);
     if (!res.headersSent) {
       res.status(500).json({ 
-        error: 'Internal Server Error',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        error: 'Internal Server Error'
       });
     }
   }
