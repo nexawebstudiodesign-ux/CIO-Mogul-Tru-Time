@@ -5,15 +5,59 @@ import { QueryAttendanceDto } from './dto/query-attendance.dto';
 
 @Injectable()
 export class AttendanceService {
+  private readonly MAX_DAYS_OLD = 7; // Configurable: maximum days old for attendance marking
+  
+  // Configurable holidays (YYYY-MM-DD format)
+  private readonly holidays: string[] = [
+    '2026-01-26', // Republic Day
+    '2026-08-15', // Independence Day
+    '2026-10-02', // Gandhi Jayanti
+    '2026-12-25', // Christmas
+    // Add more holidays as needed
+  ];
+
   constructor(private supabaseService: SupabaseService) {}
 
   async createAttendance(userId: string, dto: CreateAttendanceDto) {
     const date = this.normalizeDate(dto.date);
+    const today = this.normalizeDate(new Date().toISOString());
+    
+    // Validation 1: Cannot mark attendance for future dates
+    if (date > today) {
+      throw new BadRequestException('Cannot mark attendance for future dates');
+    }
+    
+    // Validation 2: Cannot mark attendance older than 7 days
+    const daysDifference = this.calculateDaysDifference(date, today);
+    if (daysDifference > this.MAX_DAYS_OLD) {
+      throw new BadRequestException(`Cannot mark attendance older than ${this.MAX_DAYS_OLD} days`);
+    }
+    
+    // Validation 3: Cannot mark attendance for weekends
+    if (this.isWeekend(date)) {
+      throw new BadRequestException('Cannot mark attendance for weekends (Saturday/Sunday)');
+    }
+    
+    // Validation 4: Cannot mark attendance for holidays
+    if (this.isHoliday(date)) {
+      throw new BadRequestException('Cannot mark attendance for holidays');
+    }
+
     const loginTime = new Date(dto.loginTime);
     const logoutTime = new Date(dto.logoutTime);
 
     if (logoutTime <= loginTime) {
       throw new BadRequestException('Logout must be after login');
+    }
+    
+    // Validation 5: Working hours should be reasonable (4-16 hours)
+    const totalMinutes = Math.round((logoutTime.getTime() - loginTime.getTime()) / 60000);
+    const totalHours = totalMinutes / 60;
+    if (totalHours < 4) {
+      throw new BadRequestException('Minimum working hours is 4 hours');
+    }
+    if (totalHours > 16) {
+      throw new BadRequestException('Maximum working hours is 16 hours. Please verify your login/logout times.');
     }
 
     const { data: existing, error: existingError } = await this.supabaseService.client
@@ -28,8 +72,6 @@ export class AttendanceService {
     if (existing) {
       throw new BadRequestException('Attendance already submitted for this date');
     }
-
-    const totalMinutes = Math.round((logoutTime.getTime() - loginTime.getTime()) / 60000);
 
     const { data: attendance, error: createError } = await this.supabaseService.client
       .from('attendance')
@@ -89,5 +131,26 @@ export class AttendanceService {
     const date = new Date(value);
     const utc = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
     return utc.toISOString().slice(0, 10);
+  }
+
+  // Helper method to check if date is on weekend (Saturday = 6, Sunday = 0)
+  private isWeekend(dateString: string): boolean {
+    const date = new Date(dateString + 'T00:00:00Z');
+    const dayOfWeek = date.getUTCDay();
+    return dayOfWeek === 0 || dayOfWeek === 6; // Sunday or Saturday
+  }
+
+  // Helper method to check if date is a holiday
+  private isHoliday(dateString: string): boolean {
+    return this.holidays.includes(dateString);
+  }
+
+  // Helper method to calculate days difference between two dates
+  private calculateDaysDifference(date1: string, date2: string): number {
+    const d1 = new Date(date1 + 'T00:00:00Z');
+    const d2 = new Date(date2 + 'T00:00:00Z');
+    const diffTime = Math.abs(d2.getTime() - d1.getTime());
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
   }
 }

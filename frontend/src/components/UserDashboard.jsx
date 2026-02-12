@@ -33,6 +33,52 @@ export default function UserDashboard() {
   const [userLeaveForm, setUserLeaveForm] = useState({ type: 'Casual', from: '', to: '', reason: '' })
   const [userLeaveErrors, setUserLeaveErrors] = useState({})
 
+  // Configurable holidays (should match backend)
+  const holidays = [
+    '2026-01-26', // Republic Day
+    '2026-08-15', // Independence Day
+    '2026-10-02', // Gandhi Jayanti
+    '2026-12-25', // Christmas
+  ]
+
+  // Helper function to check if date is weekend
+  const isWeekend = (dateString) => {
+    if (!dateString) return false
+    const date = new Date(dateString + 'T00:00:00')
+    const dayOfWeek = date.getDay()
+    return dayOfWeek === 0 || dayOfWeek === 6 // Sunday or Saturday
+  }
+
+  // Helper function to check if date is holiday
+  const isHoliday = (dateString) => {
+    if (!dateString) return false
+    return holidays.includes(dateString)
+  }
+
+  // Helper function to get date status message
+  const getDateStatusMessage = (dateString) => {
+    if (!dateString) return null
+    if (isWeekend(dateString)) {
+      return { type: 'weekend', message: 'Weekend - Attendance cannot be marked' }
+    }
+    if (isHoliday(dateString)) {
+      return { type: 'holiday', message: 'Holiday - Attendance cannot be marked' }
+    }
+    const selectedDate = new Date(dateString + 'T00:00:00')
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const diffTime = today - selectedDate
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+    
+    if (selectedDate > today) {
+      return { type: 'future', message: 'Future date - Attendance cannot be marked' }
+    }
+    if (diffDays > 7) {
+      return { type: 'old', message: `Date is ${diffDays} days old - Maximum 7 days allowed` }
+    }
+    return null
+  }
+
   // Computed data
   const loggedUserAttendance = useMemo(
     () => filteredAttendance.filter((record) => record.userId === loggedUserId),
@@ -158,24 +204,26 @@ export default function UserDashboard() {
     }
 
     try {
-      const loginDate = new Date(`1970-01-01T${userAttendanceForm.login}:00`)
-      const logoutDate = new Date(`1970-01-01T${userAttendanceForm.logout}:00`)
-      const hours = Math.round(((logoutDate - loginDate) / 3600000) * 10) / 10
+      const dateStr = userAttendanceForm.date
+      const loginDateTime = new Date(`${dateStr}T${userAttendanceForm.login}:00`)
+      const logoutDateTime = new Date(`${dateStr}T${userAttendanceForm.logout}:00`)
       
       const attendanceData = {
-        date: userAttendanceForm.date,
-        hours,
-        mails: Number(userAttendanceForm.mails),
-        dataEntry: Number(userAttendanceForm.data),
-        linkedinActivity: Number(userAttendanceForm.linkedin),
-        followUps: Number(userAttendanceForm.followUps),
+        date: dateStr,
+        loginTime: loginDateTime.toISOString(),
+        logoutTime: logoutDateTime.toISOString(),
+        mailsCount: Number(userAttendanceForm.mails),
+        dataCount: Number(userAttendanceForm.data),
+        linkedinCount: Number(userAttendanceForm.linkedin),
+        followUpCount: Number(userAttendanceForm.followUps),
       }
       
       await apiService.createAttendance(attendanceData)
       
+      const hours = Math.round(((logoutDateTime - loginDateTime) / 3600000) * 10) / 10
       const newRecord = {
         userId: loggedUserId,
-        date: userAttendanceForm.date,
+        date: dateStr,
         hours,
         mails: Number(userAttendanceForm.mails),
         data: Number(userAttendanceForm.data),
@@ -336,13 +384,26 @@ export default function UserDashboard() {
                   className="input-field"
                   type="date"
                   required
+                  max={new Date().toISOString().split('T')[0]}
                   value={userAttendanceForm.date}
                   onChange={(event) =>
                     setUserAttendanceForm((prev) => ({ ...prev, date: event.target.value }))
                   }
                 />
+                {userAttendanceForm.date && getDateStatusMessage(userAttendanceForm.date) && (
+                  <p className={`mt-1 text-xs font-semibold ${
+                    getDateStatusMessage(userAttendanceForm.date).type === 'holiday' 
+                      ? 'text-orange-600' 
+                      : 'text-red-500'
+                  }`}>
+                    ⚠️ {getDateStatusMessage(userAttendanceForm.date).message}
+                  </p>
+                )}
                 {userAttendanceErrors.date && (
                   <p className="mt-1 text-xs text-red-500">{userAttendanceErrors.date}</p>
+                )}
+                {userAttendanceErrors.general && (
+                  <p className="mt-1 text-xs text-red-500">{userAttendanceErrors.general}</p>
                 )}
               </div>
               <div>
