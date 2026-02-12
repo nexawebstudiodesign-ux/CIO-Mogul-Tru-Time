@@ -105,7 +105,7 @@ export class LeaveService {
     }
 
     if (dto.status === 'APPROVED') {
-      const days = this.countDays(leave.fromDate, leave.toDate);
+      const days = this.countDays(leave.from_date, leave.to_date);
       const { data: user, error: userError } = await this.supabaseService.client
         .from('users')
         .select('id,leave_balance')

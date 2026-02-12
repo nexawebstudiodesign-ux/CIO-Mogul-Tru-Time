@@ -1,22 +1,27 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { apiService } from '../utils/api'
 
 export default function Login() {
   const navigate = useNavigate()
   const [loginInput, setLoginInput] = useState({ employeeId: '', password: '' })
   const [loginError, setLoginError] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
 
-  const handleLoginSubmit = (event) => {
+  const handleLoginSubmit = async (event) => {
     event.preventDefault()
-    const sampleId = 'CIO-0003'
-    const samplePassword = 'Welcome@123'
-    if (loginInput.employeeId === sampleId && loginInput.password === samplePassword) {
-      setLoginError('')
-      localStorage.setItem('ciomogul_user_id', sampleId)
+    setLoginError('')
+    setIsLoading(true)
+
+    try {
+      const response = await apiService.login(loginInput.employeeId, loginInput.password)
+      localStorage.setItem('ciomogul_user_id', response.user.id)
       navigate('/user')
-      return
+    } catch (error) {
+      setLoginError(error.message || 'Invalid credentials. Please try again.')
+    } finally {
+      setIsLoading(false)
     }
-    setLoginError('Invalid credentials. Try the sample login below.')
   }
 
   return (
@@ -47,8 +52,11 @@ export default function Login() {
               }
             />
             {loginError && <p className="text-sm text-red-500">{loginError}</p>}
-            <button className="w-full rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow">
-              Sign In
+            <button 
+              className="w-full rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow disabled:opacity-50"
+              disabled={isLoading}
+            >
+              {isLoading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
         </div>

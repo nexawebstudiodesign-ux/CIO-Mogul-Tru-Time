@@ -24,9 +24,20 @@ export class UsersService {
     }
     const employeeId = await this.generateEmployeeId();
     const passwordHash = await bcrypt.hash(dto.password, 10);
+    const { data: authUser, error: authError } =
+      await this.supabaseService.client.auth.admin.createUser({
+        email: dto.email,
+        password: dto.password,
+        email_confirm: true,
+        user_metadata: { role: 'USER' },
+      });
+    if (authError || !authUser.user) {
+      throw new BadRequestException('Unable to create user credentials');
+    }
     const { data: user, error: createError } = await this.supabaseService.client
       .from('users')
       .insert({
+        id: authUser.user.id,
         name: dto.name,
         email: dto.email,
         employee_id: employeeId,
@@ -38,6 +49,7 @@ export class UsersService {
       .select('id,name,email,employee_id,role,leave_balance,is_active,created_at')
       .single();
     if (createError || !user) {
+      await this.supabaseService.client.auth.admin.deleteUser(authUser.user.id);
       throw new BadRequestException('Unable to create user');
     }
     return {
@@ -92,6 +104,13 @@ export class UsersService {
       }
       if (emailExists) {
         throw new BadRequestException('Email already in use');
+      }
+      const { error: authUpdateError } =
+        await this.supabaseService.client.auth.admin.updateUserById(userId, {
+          email: dto.email,
+        });
+      if (authUpdateError) {
+        throw new BadRequestException('Unable to update auth email');
       }
     }
     const { data: updated, error: updateError } = await this.supabaseService.client
@@ -157,6 +176,13 @@ export class UsersService {
     if (userError || !user) {
       throw new NotFoundException('User not found');
     }
+    const { error: authUpdateError } =
+      await this.supabaseService.client.auth.admin.updateUserById(userId, {
+        password: dto.password,
+      });
+    if (authUpdateError) {
+      throw new BadRequestException('Unable to reset auth password');
+    }
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const { error: updateError } = await this.supabaseService.client
       .from('users')
@@ -176,6 +202,10 @@ export class UsersService {
       .maybeSingle();
     if (userError || !user) {
       throw new NotFoundException('User not found');
+    }
+    const { error: authDeleteError } = await this.supabaseService.client.auth.admin.deleteUser(userId);
+    if (authDeleteError) {
+      throw new BadRequestException('Unable to delete auth user');
     }
     const { error: deleteError } = await this.supabaseService.client.from('users').delete().eq('id', userId);
     if (deleteError) {

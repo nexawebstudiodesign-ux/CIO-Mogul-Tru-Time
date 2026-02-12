@@ -1,17 +1,14 @@
 import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { SupabaseService } from '../supabase/supabase.service';
 import { LoginDto } from './dto/login.dto';
 import { AdminSignupDto } from './dto/admin-signup.dto';
-import { Role } from '../common/roles.enum';
 import * as bcrypt from 'bcryptjs';
 
 @Injectable()
 export class AuthService {
   constructor(
     private supabaseService: SupabaseService,
-    private jwtService: JwtService,
     private configService: ConfigService,
   ) {}
 
@@ -24,13 +21,19 @@ export class AuthService {
     if (error || !user || !user.is_active) {
       throw new UnauthorizedException('Invalid credentials');
     }
-    const matches = await bcrypt.compare(dto.password, user.password_hash);
-    if (!matches) {
+    const { data: authData, error: authError } =
+      await this.supabaseService.authClient.auth.signInWithPassword({
+        email: user.email,
+        password: dto.password,
+      });
+    if (authError || !authData.session?.access_token || !authData.user) {
       throw new UnauthorizedException('Invalid credentials');
     }
-    const payload = { sub: user.id, role: user.role as Role };
+    if (authData.user.id !== user.id) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
     return {
-      accessToken: await this.jwtService.signAsync(payload),
+      accessToken: authData.session.access_token,
       user: {
         id: user.id,
         name: user.name,
@@ -80,9 +83,20 @@ export class AuthService {
       throw new BadRequestException('Employee ID already in use');
     }
     const passwordHash = await bcrypt.hash(dto.password, 10);
+    const { data: authUser, error: authError } =
+      await this.supabaseService.client.auth.admin.createUser({
+        email: dto.email,
+        password: dto.password,
+        email_confirm: true,
+        user_metadata: { role: 'ADMIN' },
+      });
+    if (authError || !authUser.user) {
+      throw new BadRequestException('Unable to create admin credentials');
+    }
     const { data: admin, error: createError } = await this.supabaseService.client
       .from('users')
       .insert({
+        id: authUser.user.id,
         name: dto.name,
         email: dto.email,
         employee_id: dto.employeeId,
@@ -94,6 +108,7 @@ export class AuthService {
       .select('id,name,email,employee_id,role')
       .single();
     if (createError || !admin) {
+      await this.supabaseService.client.auth.admin.deleteUser(authUser.user.id);
       throw new BadRequestException('Unable to create admin');
     }
     return {
