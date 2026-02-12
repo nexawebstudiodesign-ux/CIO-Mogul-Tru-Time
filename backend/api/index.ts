@@ -1,83 +1,62 @@
 import { NestFactory } from '@nestjs/core';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import { ValidationPipe } from '@nestjs/common';
-import express, { Request, Response } from 'express';
+import express from 'express';
 import { AppModule } from '../src/app.module';
 
-let nestApp: any;
+let app: any = null;
 
-async function bootstrap() {
-  if (!nestApp) {
-    try {
-      const expressInstance = express();
+async function createApp() {
+  const expressApp = express();
+  
+  // Register middleware FIRST, before NestJS tries to check for them
+  expressApp.use(express.json({ limit: '50mb' }));
+  expressApp.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-      // Patch app.get to prevent 'router' access from triggering deprecation
-      const originalGet = expressInstance.get;
-      expressInstance.get = function(prop: any, ...args: any[]) {
-        if (prop === 'router' || prop === '_router') {
-          return undefined;
-        }
-        return originalGet.call(this, prop, ...args);
-      };
+  // Create adapter
+  const adapter = new ExpressAdapter(expressApp);
 
-      // Add middleware BEFORE creating NestJS
-      expressInstance.use(express.json({ limit: '50mb' }));
-      expressInstance.use(express.urlencoded({ limit: '50mb', extended: true }));
+  // Patch registerParserMiddleware to do nothing
+  // This prevents the deprecated app.router check
+  const originalRegister = adapter.registerParserMiddleware;
+  adapter.registerParserMiddleware = function() {
+    return this;
+  };
 
-      const adapter = new ExpressAdapter(expressInstance);
-      nestApp = await NestFactory.create(AppModule, adapter, {
-        logger: false,
-      });
+  const nestApp = await NestFactory.create(AppModule, adapter, {
+    logger: false,
+  });
 
-      nestApp.enableCors({
-        origin: '*',
-        credentials: true,
-      });
+  nestApp.enableCors({
+    origin: '*',
+    credentials: true,
+  });
 
-      nestApp.useGlobalPipes(
-        new ValidationPipe({
-          whitelist: true,
-          transform: true,
-        }),
-      );
+  nestApp.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      transform: true,
+    }),
+  );
 
-      nestApp.setGlobalPrefix('api');
+  nestApp.setGlobalPrefix('api');
 
-      // Use getHttpServer() instead of calling init()
-      const server = nestApp.getHttpServer();
-      
-      // Silence the init if needed
-      try {
-        await nestApp.init();
-      } catch (e) {
-        // Ignore router deprecation error if it still occurs
-        if (!String(e).includes("'app.router'")) {
-          throw e;
-        }
-      }
+  // Initialize app routes
+  await nestApp.init();
 
-      return expressInstance;
-    } catch (error) {
-      console.error('Bootstrap error:', error);
-      throw error;
-    }
-  }
-
-  // Return the express instance on subsequent calls
-  const adapter = nestApp.getHttpAdapter();
-  return adapter.getInstance();
+  return expressApp;
 }
 
-export default async (req: Request, res: Response) => {
+export default async (req: any, res: any) => {
   try {
-    const app = await bootstrap();
+    if (!app) {
+      app = await createApp();
+    }
     app(req, res);
   } catch (error) {
     console.error('Error:', error);
     if (!res.headersSent) {
-      res.status(500).json({ 
-        error: 'Internal Server Error'
-      });
+      res.status(500).json({ error: 'Server Error' });
     }
   }
 };
