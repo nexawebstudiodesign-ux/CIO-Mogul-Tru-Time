@@ -87,7 +87,7 @@ export class LeaveService {
       
       if (user.leave_balance < requestedDays) {
         throw new BadRequestException(
-          `Insufficient leave balance. You have ${user.leave_balance} days available but requesting ${requestedDays} days. Please apply for PAID leave instead.`
+          `Insufficient leave balance. You have ${user.leave_balance} days available but requesting ${requestedDays} days. Please apply for PAID leave instead, or kindly contact Admin at info@theciomogul.com for assistance.`
         );
       }
     }

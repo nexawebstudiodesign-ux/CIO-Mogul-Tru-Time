@@ -184,9 +184,9 @@ export default function UserDashboard() {
     
     if (userLeaveForm.type === 'CASUAL' || userLeaveForm.type === 'SICK') {
       if (leaveBalance === 0) {
-        errors.type = 'Leave balance is 0. Please select PAID leave option.'
+        errors.type = '⚠️ Leave balance is 0. Please select PAID leave option or contact Admin at info@theciomogul.com'
       } else if (requestedDays > leaveBalance) {
-        errors.type = `Insufficient balance. You have ${leaveBalance} days but requesting ${requestedDays} days. Please select PAID leave or reduce days.`
+        errors.type = `⚠️ Insufficient balance: You have ${leaveBalance} days but requesting ${requestedDays} days. Please select PAID leave, reduce days, or contact Admin at info@theciomogul.com`
       }
     }
     
@@ -522,6 +522,9 @@ export default function UserDashboard() {
             </div>
             <div className="mt-3 rounded-lg bg-amber-50 p-2 border border-amber-200">
               <p className="text-xs text-amber-800">⚠️ Leave can be applied for dates up to 7 days in the past</p>
+            </div>
+            <div className="mt-3 rounded-lg bg-green-50 p-2 border border-green-200">
+              <p className="text-xs text-green-800">📧 Need help? Contact Admin at <a href="mailto:info@theciomogul.com" className="underline font-semibold">info@theciomogul.com</a></p>
             </div>
             <form className="mt-4 grid gap-3" onSubmit={handleUserLeaveSubmit}>
               <div>
