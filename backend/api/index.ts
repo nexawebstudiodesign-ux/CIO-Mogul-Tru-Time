@@ -4,62 +4,71 @@ import { ValidationPipe } from '@nestjs/common';
 import express, { Request, Response } from 'express';
 import { AppModule } from '../src/app.module';
 
-// Create Express app at module level to reuse across invocations
 const expressApp = express();
-
-// Add middleware at module level before NestJS tries to register them
 expressApp.use(express.json({ limit: '50mb' }));
 expressApp.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 let app: any;
+let initPromise: Promise<any> | null = null;
 
 async function bootstrap() {
   if (!app) {
-    try {
-      const adapter = new ExpressAdapter(expressApp);
-      app = await NestFactory.create(AppModule, adapter, {
-        logger: ['error', 'warn'],
-        bufferLogs: true,
-      });
+    if (!initPromise) {
+      initPromise = (async () => {
+        try {
+          // Suppress console logs during initialization
+          const originalLog = console.log;
+          console.log = () => {};
 
-      app.enableCors({
-        origin: true,
-        credentials: true,
-      });
+          const adapter = new ExpressAdapter(expressApp);
+          app = await NestFactory.create(AppModule, adapter, {
+            logger: false,
+          });
 
-      app.useGlobalPipes(
-        new ValidationPipe({
-          whitelist: true,
-          forbidNonWhitelisted: true,
-          transform: true,
-        }),
-      );
+          app.enableCors({
+            origin: '*',
+            credentials: true,
+            methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+          });
 
-      app.setGlobalPrefix('api');
-      
-      // Use app.getHttpAdapter() to get the Express instance
-      // This prevents NestJS from trying to check app.router
-      await app.init();
-    } catch (error) {
-      console.error('Failed to bootstrap NestJS app:', error);
-      throw error;
+          app.useGlobalPipes(
+            new ValidationPipe({
+              whitelist: true,
+              forbidNonWhitelisted: true,
+              transform: true,
+              transformOptions: {
+                enableImplicitConversion: true,
+              },
+            }),
+          );
+
+          app.setGlobalPrefix('api');
+          await app.init();
+
+          // Restore console.log
+          console.log = originalLog;
+
+          return app;
+        } catch (error) {
+          console.error('Bootstrap error:', error);
+          initPromise = null;
+          throw error;
+        }
+      })();
     }
+    await initPromise;
   }
-
   return app;
 }
 
 export default async (req: Request, res: Response) => {
   try {
     await bootstrap();
-    // Call the middleware chain directly
-    return expressApp(req, res);
+    expressApp(req, res);
   } catch (error) {
-    console.error('Serverless function error:', error);
-    return res.status(500).json({
-      error: 'Internal Server Error',
-      message: error instanceof Error ? error.message : 'An unexpected error occurred',
-      timestamp: new Date().toISOString(),
-    });
+    console.error('Error:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
   }
 };
