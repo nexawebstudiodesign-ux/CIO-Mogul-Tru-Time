@@ -16,10 +16,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     configService: ConfigService,
     private supabaseService: SupabaseService,
   ) {
+    const jwtSecret = configService.get<string>('SUPABASE_JWT_SECRET');
+    if (!jwtSecret) {
+      throw new Error('SUPABASE_JWT_SECRET is not defined in environment variables');
+    }
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.get<string>('SUPABASE_JWT_SECRET'),
+      secretOrKey: jwtSecret,
     });
   }
 

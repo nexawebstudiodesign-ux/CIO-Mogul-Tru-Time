@@ -13,13 +13,13 @@ export class SalaryController {
   constructor(private readonly salaryService: SalaryService) {}
 
   @Post()
-  @Roles(Role.Admin)
+  @Roles(Role.ADMIN)
   create(@Body() createSalaryDto: CreateMonthlySalaryDto) {
     return this.salaryService.create(createSalaryDto);
   }
 
   @Get()
-  @Roles(Role.Admin)
+  @Roles(Role.ADMIN)
   findAll(@Query('month') month?: string, @Query('userId') userId?: string) {
     return this.salaryService.findAll(month, userId);
   }
@@ -30,13 +30,13 @@ export class SalaryController {
   }
 
   @Patch(':id')
-  @Roles(Role.Admin)
+  @Roles(Role.ADMIN)
   update(@Param('id') id: string, @Body() updateSalaryDto: UpdateMonthlySalaryDto) {
     return this.salaryService.update(id, updateSalaryDto);
   }
 
   @Delete(':id')
-  @Roles(Role.Admin)
+  @Roles(Role.ADMIN)
   remove(@Param('id') id: string) {
     return this.salaryService.remove(id);
   }

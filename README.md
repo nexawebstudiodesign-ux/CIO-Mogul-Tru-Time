@@ -1,16 +1,36 @@
-# CIO Mogul Tru Time
+# 🎯 CIO Mogul Tru Time
 
-Attendance, productivity, and leave management system with admin and user dashboards.
+> Enterprise-grade attendance, productivity, and leave management system with admin and user dashboards.
 
 **Organization:** CIO MOGUL GLOBAL PUBLICATION PRIVATE LIMITED  
 **UAN:** U58132MH2025PTC459494  
 **Address:** Sno. 80/1 Sai Nagari Bld, B/iwadmukhwadi Bhosari, Punawale, Pune, Pune City, Maharashtra, India, 411033
 
-## Tech Stack
-- **Backend**: NestJS + Supabase (REST API, JWT auth)
-- **Frontend**: React + Vite + Tailwind CSS
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![NestJS](https://img.shields.io/badge/NestJS-11.0.1-E0234E?logo=nestjs)](https://nestjs.com/)
+[![React](https://img.shields.io/badge/React-19.0.0-61DAFB?logo=react)](https://reactjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7.3-3178C6?logo=typescript)](https://www.typescriptlang.org/)
+
+## 📋 Table of Contents
+- [Tech Stack](#-tech-stack)
+- [Features](#-features)
+- [Quick Start](#-quick-start)
+- [Validation Rules](#-validation-rules-implemented)
+- [API Documentation](#-api-documentation)
+- [Database Schema](#-database-schema)
+- [Deployment](#-deployment)
+- [Known Issues](#-known-issues--improvements-needed)
+- [Troubleshooting](#-troubleshooting)
+- [Contributing](#-contributing)
+- [License](#-license)
+
+## 🛠 Tech Stack
+- **Backend**: NestJS 11.0.1 + Supabase (REST API, JWT auth)
+- **Frontend**: React 19.0.0 + Vite 6.0 + Tailwind CSS 3.4
 - **Database**: Supabase (PostgreSQL with RLS)
+- **Authentication**: JWT tokens + bcryptjs password hashing
 - **Deployment**: Vercel (frontend), Render/Railway (backend)
+- **Email**: info@theciomogul.com (admin contact)
 
 ---
 
@@ -180,29 +200,83 @@ Open:
 
 ---
 
-## Features
+## ✨ Features
 
-### Admin Dashboard
-- View all user records by month with compliance tracking
-- Manage Casual (max 12) and Sick (max 12) leave balances
-- Sick leave lapses by 1 each month
-- Set monthly salary for each user with performance bonus
-- Add/Edit/Delete users and leaves
-- CSV export of monthly summary
+### 👨‍💼 Admin Dashboard
+- **User Management**
+  - Create/Edit/Delete users with role-based access
+  - Generate auto-incremented Employee IDs (CIO-0001, CIO-0002, etc.)
+  - Manage leave balances (Casual/Sick leave)
+  - Reset user passwords
+  - Activate/Deactivate users
 
-### User Dashboard
-- Daily Tru Time entry (login/logout times + productivity metrics)
-- Apply for leave (Casual, Sick, Paid)
-- View monthly attendance and leave history
-- Generate salary slip with performance summary (print/save as PDF)
-- Select any month to view salary slip with earnings, deductions, and performance data
-- Salary slip includes organization details, UAN number, and authorized signature section
+- **Attendance Oversight**
+  - View all employee attendance records by month
+  - Track compliance (9+ hour days)
+  - Monitor productivity metrics (mails, data, LinkedIn, follow-ups)
+  - Filter by user and date range
+  - Export monthly summary to CSV
 
-### API (Backend)
-- JWT authentication with role-based guards
-- Admin: full user/leave/attendance CRUD
-- User: self-service attendance and leave apply
-- See [backend/README.md](backend/README.md) for all endpoints
+- **Leave Management**
+  - Approve/Reject leave requests
+  - Create leaves on behalf of users
+  - Track leave status (PENDING/APPROVED/REJECTED)
+  - View leave history with date ranges
+  - Automatic balance deduction on leave application
+
+- **Salary Administration**
+  - Set monthly salary for each user
+  - Configure components: Base, HRA, Transport, Other Allowances
+  - Add performance bonuses
+  - Set deductions: PF, Tax, Other
+  - Current month + next month only (prevents far-future salary creation)
+  - Duplicate prevention (one record per user per month)
+  - Edit existing salary records instead of creating duplicates
+
+### 👤 User Dashboard
+- **Tru Time Entry**
+  - Daily attendance submission with login/logout times
+  - Productivity tracking (mails sent, data processed, LinkedIn outreach, follow-ups)
+  - Working hours calculation (must be 4-16 hours)
+  - Cannot mark for future dates, weekends, or holidays
+  - Maximum 7 days retroactive entry
+  - Real-time validation with user-friendly error messages
+
+- **Leave Application**
+  - Apply for Casual, Sick, or Paid leave
+  - Immediate balance deduction (not deferred to approval)
+  - Current month + next month restriction only
+  - Cannot apply for dates older than 7 days
+  - Overlap detection (prevents duplicate leave periods)
+  - Minimum 10-character reason requirement
+  - Real-time balance validation before submission
+  - **Cancel Leave**: Users can cancel their own leaves until end date passes
+
+- **Self-Service Features**
+  - View monthly attendance history
+  - Track leave balance in real-time
+  - View leave status (PENDING/APPROVED/REJECTED)
+  - Generate and print salary slips (PDF-ready)
+  - Month-wise salary slip selection
+  - Contact admin help: info@theciomogul.com
+
+### 🔐 Authentication & Security
+- JWT-based authentication with role guards
+- Role-based access control (ADMIN vs USER)
+- Bcrypt password hashing
+- Protected routes with middleware
+- Supabase RLS policies (service role only)
+- Auto-logout on token expiration
+
+### 🎨 UI/UX Features
+- Modern glass-morphism design with Tailwind CSS
+- Responsive layout (desktop-first)
+- Real-time form validation with error messages
+- Character counters for text inputs
+- Disabled/enabled states for action buttons
+- Loading states for async operations
+- Success/Error notifications
+- Professional color scheme (Sand/Ink palette)
 
 ---
 
