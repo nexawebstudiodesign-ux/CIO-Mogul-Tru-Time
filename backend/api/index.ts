@@ -4,32 +4,30 @@ import { ValidationPipe } from '@nestjs/common';
 import express, { Request, Response } from 'express';
 import { AppModule } from '../src/app.module';
 
-let cachedApp: any;
+// Create Express app at module level to reuse across invocations
+const expressApp = express();
+
+// Add middleware at module level before NestJS tries to register them
+expressApp.use(express.json({ limit: '50mb' }));
+expressApp.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+let app: any;
 
 async function bootstrap() {
-  // In serverless, create a new Express app for each invocation
-  // Don't cache the full app as it causes issues with Express 4.x adapter
-  const expressApp = express();
-  
-  // Add built-in middleware directly
-  expressApp.use(express.json({ limit: '50mb' }));
-  expressApp.use(express.urlencoded({ limit: '50mb', extended: true }));
-  
-  // Only cache if not already cached
-  if (!cachedApp) {
+  if (!app) {
     try {
       const adapter = new ExpressAdapter(expressApp);
-      cachedApp = await NestFactory.create(AppModule, adapter, {
+      app = await NestFactory.create(AppModule, adapter, {
         logger: ['error', 'warn'],
         bufferLogs: true,
       });
 
-      cachedApp.enableCors({
+      app.enableCors({
         origin: true,
         credentials: true,
       });
 
-      cachedApp.useGlobalPipes(
+      app.useGlobalPipes(
         new ValidationPipe({
           whitelist: true,
           forbidNonWhitelisted: true,
@@ -37,21 +35,25 @@ async function bootstrap() {
         }),
       );
 
-      cachedApp.setGlobalPrefix('api');
-      await cachedApp.init();
+      app.setGlobalPrefix('api');
+      
+      // Use app.getHttpAdapter() to get the Express instance
+      // This prevents NestJS from trying to check app.router
+      await app.init();
     } catch (error) {
       console.error('Failed to bootstrap NestJS app:', error);
       throw error;
     }
   }
 
-  return expressApp;
+  return app;
 }
 
 export default async (req: Request, res: Response) => {
   try {
-    const app = await bootstrap();
-    return app(req, res);
+    await bootstrap();
+    // Call the middleware chain directly
+    return expressApp(req, res);
   } catch (error) {
     console.error('Serverless function error:', error);
     return res.status(500).json({
