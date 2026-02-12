@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useApp } from '../context/AppContext'
+import { apiService } from '../utils/api'
 import {
   getNextEmployeeId,
   getNextLeaveId,
@@ -28,6 +29,8 @@ export default function AdminDashboard() {
   const [showSalaryModal, setShowSalaryModal] = useState(false)
   const [showUserSalarySlip, setShowUserSalarySlip] = useState(false)
   const [modalMode, setModalMode] = useState('add')
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   const [userForm, setUserForm] = useState({
     firstName: '',
@@ -60,6 +63,33 @@ export default function AdminDashboard() {
     otherDeduction: '',
   })
   const [salaryFormErrors, setSalaryFormErrors] = useState({})
+
+  // Fetch data from backend on mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true)
+        setError(null)
+        const [usersData, leavesData, attendanceData] = await Promise.all([
+          apiService.getUsers(),
+          apiService.getAllLeaves(),
+          apiService.getAllAttendance(),
+        ])
+        setUsers(usersData)
+        setLeaves(leavesData)
+        // Note: attendance API returns data, not setAttendance in context
+        if (usersData.length > 0 && !selectedUserId) {
+          setSelectedUserId(usersData[0].id)
+        }
+      } catch (err) {
+        console.error('Failed to fetch data:', err)
+        setError('Failed to load data from server')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    fetchData()
+  }, [])
 
   const filteredAttendance = useMemo(
     () => attendance.filter((record) => record.date.startsWith(selectedMonth)),
@@ -424,55 +454,69 @@ export default function AdminDashboard() {
     return errors
   }
 
-  const handleUserSubmit = (event) => {
+  const handleUserSubmit = async (event) => {
     event.preventDefault()
     const errors = validateUserForm(modalMode)
     setUserFormErrors(errors)
     if (Object.keys(errors).length > 0) {
       return
     }
-    if (modalMode === 'add') {
-      const newUser = {
-        id: getNextEmployeeId(users),
-        name: `${userForm.firstName.trim()} ${userForm.lastName.trim()}`,
-        email: userForm.email.trim(),
-        status: 'Active',
-        casualBalance: clampBalance(Number(userForm.casualBalance || 0)),
-        sickBalance: clampBalance(Number(userForm.sickBalance || 0)),
-        sickBaseMonth: selectedMonth,
+
+    try {
+      if (modalMode === 'add') {
+        const employeeId = getNextEmployeeId(users)
+        const userData = {
+          name: `${userForm.firstName.trim()} ${userForm.lastName.trim()}`,
+          email: userForm.email.trim(),
+          employeeId: employeeId,
+          password: userForm.password,
+          casualBalance: clampBalance(Number(userForm.casualBalance || 0)),
+          sickBalance: clampBalance(Number(userForm.sickBalance || 0)),
+          role: 'user',
+        }
+        const newUser = await apiService.createUser(userData)
+        setUsers((prev) => [newUser, ...prev])
+        setSelectedUserId(newUser.id)
       }
-      setUsers((prev) => [newUser, ...prev])
-      setSelectedUserId(newUser.id)
+      if (modalMode === 'edit') {
+        const userData = {
+          name: `${userForm.firstName.trim()} ${userForm.lastName.trim()}`,
+          email: userForm.email.trim(),
+          casualBalance: clampBalance(Number(userForm.casualBalance || 0)),
+          sickBalance: clampBalance(Number(userForm.sickBalance || 0)),
+        }
+        if (userForm.password) {
+          userData.password = userForm.password
+        }
+        const updatedUser = await apiService.updateUser(selectedUserId, userData)
+        setUsers((prev) =>
+          prev.map((user) => (user.id === selectedUserId ? updatedUser : user))
+        )
+      }
+      setShowUserModal(false)
+    } catch (error) {
+      console.error('Failed to save user:', error)
+      setUserFormErrors({ general: error.message || 'Failed to save user' })
     }
-    if (modalMode === 'edit') {
-      setUsers((prev) =>
-        prev.map((user) =>
-          user.id === selectedUserId
-            ? {
-                ...user,
-                name: `${userForm.firstName.trim()} ${userForm.lastName.trim()}`,
-                email: userForm.email.trim(),
-                casualBalance: clampBalance(Number(userForm.casualBalance || 0)),
-                sickBalance: clampBalance(Number(userForm.sickBalance || 0)),
-                sickBaseMonth: selectedMonth,
-              }
-            : user,
-        ),
-      )
-    }
-    setShowUserModal(false)
   }
 
-  const handleUserDelete = () => {
+  const handleUserDelete = async () => {
     if (!selectedUserId) {
       setUserFormErrors({ general: 'Select a user to delete.' })
       return
     }
-    setUsers((prev) => prev.filter((user) => user.id !== selectedUserId))
-    setLeaves((prev) => prev.filter((leave) => leave.userId !== selectedUserId))
-    const remaining = users.filter((user) => user.id !== selectedUserId)
-    setSelectedUserId(remaining[0]?.id ?? '')
-    setShowUserModal(false)
+
+    try {
+      await apiService.deleteUser(selectedUserId)
+      setUsers((prev) => prev.filter((user) => user.id !== selectedUserId))
+      setLeaves((prev) => prev.filter((leave) => leave.userId !== selectedUserId))
+      const remaining = users.filter((user) => user.id !== selectedUserId)
+      setSelectedUserId(remaining[0]?.id ?? '')
+      setShowUserModal(false)
+    } catch (error) {
+      console.error('Failed to delete user:', error)
+      setUserFormErrors({ general: error.message || 'Failed to delete user' })
+    }
   }
 
   const handleLeaveSubmit = (event) => {
@@ -636,6 +680,38 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen p-6 md:p-10">
+      {isLoading ? (
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <p className="text-ink-300 text-lg">Loading dashboard...</p>
+          </div>
+        </div>
+      ) : error ? (
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="glass-panel rounded-3xl p-8 shadow-lift text-center">
+            <p className="text-red-500 text-lg mb-2">⚠️ {error}</p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white mt-4"
+            >
+              Reload Page
+            </button>
+          </div>
+        </div>
+      ) : users.length === 0 ? (
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="glass-panel rounded-3xl p-8 shadow-lift text-center max-w-md">
+            <p className="text-ink-500 text-lg mb-2">👋 Welcome!</p>
+            <p className="text-ink-300 mb-4">No users found. Start by adding your first employee.</p>
+            <button 
+              onClick={() => openUserModal('add')} 
+              className="rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white"
+            >
+              Add First Employee
+            </button>
+          </div>
+        </div>
+      ) : (
       <div className="mx-auto max-w-6xl">
         <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div>
@@ -1627,6 +1703,8 @@ export default function AdminDashboard() {
           </div>
         )
       })()}
+      </div>
+      )}
     </div>
   )
 }
