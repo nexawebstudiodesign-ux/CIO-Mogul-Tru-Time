@@ -73,14 +73,16 @@ export default function AdminDashboard() {
       try {
         setIsLoading(true)
         setError(null)
-        const [usersData, leavesData, attendanceData] = await Promise.all([
+        const [usersData, leavesData, attendanceData, salariesData] = await Promise.all([
           apiService.getUsers(),
           apiService.getAllLeaves(),
           apiService.getAllAttendance(),
+          apiService.getAllSalaries(),
         ])
         setUsers(usersData)
         setLeaves(leavesData)
         setAttendance(attendanceData)
+        setMonthlySalaries(salariesData)
         if (usersData.length > 0 && !selectedUserId) {
           setSelectedUserId(usersData[0].id)
         }
@@ -628,42 +630,23 @@ export default function AdminDashboard() {
     }
   }
 
-  const handleSalarySubmit = (event) => {
+  const handleSalarySubmit = async (event) => {
     event.preventDefault()
     const errors = validateSalaryForm()
     setSalaryFormErrors(errors)
     if (Object.keys(errors).length > 0) {
       return
     }
-    const existing = monthlySalaries.find(
-      (s) => s.userId === selectedUserId && s.month === selectedMonth
-    )
-    if (existing) {
-      setMonthlySalaries((prev) =>
-        prev.map((s) =>
-          s.id === existing.id
-            ? {
-                ...s,
-                workingDays: Number(salaryForm.workingDays),
-                baseSalary: Number(salaryForm.baseSalary),
-                hra: Number(salaryForm.hra) || 0,
-                transportAllowance: Number(salaryForm.transportAllowance) || 0,
-                otherAllowance: Number(salaryForm.otherAllowance) || 0,
-                performanceBonus: Number(salaryForm.performanceBonus) || 0,
-                pfDeduction: Number(salaryForm.pfDeduction) || 0,
-                taxDeduction: Number(salaryForm.taxDeduction) || 0,
-                otherDeduction: Number(salaryForm.otherDeduction) || 0,
-              }
-            : s
-        )
+    try {
+      const existing = monthlySalaries.find(
+        (s) => s.userId === selectedUserId && s.month === selectedMonth
       )
-    } else {
-      const newSalary = {
-        id: getNextSalaryId(monthlySalaries),
+      
+      const salaryData = {
         userId: selectedUserId,
         month: selectedMonth,
-        workingDays: Number(salaryForm.workingDays),
-        baseSalary: Number(salaryForm.baseSalary),
+        workingDays: Number(salaryForm.workingDays) || 0,
+        baseSalary: Number(salaryForm.baseSalary) || 0,
         hra: Number(salaryForm.hra) || 0,
         transportAllowance: Number(salaryForm.transportAllowance) || 0,
         otherAllowance: Number(salaryForm.otherAllowance) || 0,
@@ -672,9 +655,21 @@ export default function AdminDashboard() {
         taxDeduction: Number(salaryForm.taxDeduction) || 0,
         otherDeduction: Number(salaryForm.otherDeduction) || 0,
       }
-      setMonthlySalaries((prev) => [newSalary, ...prev])
+
+      if (existing) {
+        const updatedSalary = await apiService.updateSalary(existing.id, salaryData)
+        setMonthlySalaries((prev) =>
+          prev.map((s) => (s.id === existing.id ? updatedSalary : s))
+        )
+      } else {
+        const newSalary = await apiService.createSalary(salaryData)
+        setMonthlySalaries((prev) => [newSalary, ...prev])
+      }
+      setShowSalaryModal(false)
+    } catch (error) {
+      console.error('Failed to save salary:', error)
+      setSalaryFormErrors({ general: 'Failed to save salary. Please try again.' })
     }
-    setShowSalaryModal(false)
   }
 
   return (

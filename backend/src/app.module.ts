@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { AttendanceModule } from './attendance/attendance.module';
 import { LeaveModule } from './leave/leave.module';
+import { SalaryModule } from './salary/salary.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { LeaveModule } from './leave/leave.module';
     UsersModule,
     AttendanceModule,
     LeaveModule,
+    SalaryModule,
   ],
   controllers: [AppController],
   providers: [AppService],

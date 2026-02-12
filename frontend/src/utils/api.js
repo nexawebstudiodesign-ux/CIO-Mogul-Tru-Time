@@ -167,6 +167,38 @@ class ApiService {
     })
   }
 
+  // Salary endpoints
+  async createSalary(salaryData) {
+    return this.request('/salary', {
+      method: 'POST',
+      body: JSON.stringify(salaryData),
+    })
+  }
+
+  async getAllSalaries(month, userId) {
+    const params = new URLSearchParams()
+    if (month) params.append('month', month)
+    if (userId) params.append('userId', userId)
+    return this.request(`/salary?${params}`)
+  }
+
+  async getSalary(salaryId) {
+    return this.request(`/salary/${salaryId}`)
+  }
+
+  async updateSalary(salaryId, salaryData) {
+    return this.request(`/salary/${salaryId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(salaryData),
+    })
+  }
+
+  async deleteSalary(salaryId) {
+    return this.request(`/salary/${salaryId}`, {
+      method: 'DELETE',
+    })
+  }
+
   logout() {
     localStorage.removeItem('ciomogul_token')
     localStorage.removeItem('ciomogul_user')
