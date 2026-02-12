@@ -18,6 +18,7 @@ export default function AdminDashboard() {
     leaves,
     setLeaves,
     attendance,
+    setAttendance,
     monthlySalaries,
     setMonthlySalaries,
     selectedMonth,
@@ -79,7 +80,7 @@ export default function AdminDashboard() {
         ])
         setUsers(usersData)
         setLeaves(leavesData)
-        // Note: attendance API returns data, not setAttendance in context
+        setAttendance(attendanceData)
         if (usersData.length > 0 && !selectedUserId) {
           setSelectedUserId(usersData[0].id)
         }
@@ -522,65 +523,70 @@ export default function AdminDashboard() {
     }
   }
 
-  const handleLeaveSubmit = (event) => {
+  const handleLeaveSubmit = async (event) => {
     event.preventDefault()
     const errors = validateLeaveForm()
     setLeaveFormErrors(errors)
     if (Object.keys(errors).length > 0) {
       return
     }
-    const days = Math.round((new Date(leaveForm.to) - new Date(leaveForm.from)) / 86400000) + 1
-    if (modalMode === 'add') {
-      const user = users.find((item) => item.id === leaveForm.userId)
-      const newLeave = {
-        id: getNextLeaveId(leaves),
-        userId: leaveForm.userId,
-        name: user?.name ?? 'Unknown',
-        type: leaveForm.type,
-        from: leaveForm.from,
-        to: leaveForm.to,
-        days,
-        status: 'Pending',
+
+    try {
+      if (modalMode === 'add') {
+        const leaveData = {
+          userId: leaveForm.userId,
+          type: leaveForm.type,
+          startDate: leaveForm.from,
+          endDate: leaveForm.to,
+          reason: leaveForm.reason || 'Not specified',
+        }
+        const newLeave = await apiService.adminCreateLeave(leaveData)
+        setLeaves((prev) => [newLeave, ...prev])
+        setSelectedLeaveId(newLeave.id)
       }
-      setLeaves((prev) => [newLeave, ...prev])
-      setSelectedLeaveId(newLeave.id)
-    }
-    if (modalMode === 'edit') {
-      if (!selectedLeaveId) {
-        setLeaveFormErrors({ general: 'Select a leave record to edit.' })
-        return
+      if (modalMode === 'edit') {
+        if (!selectedLeaveId) {
+          setLeaveFormErrors({ general: 'Select a leave record to edit.' })
+          return
+        }
+        const leaveData = {
+          userId: leaveForm.userId,
+          type: leaveForm.type,
+          startDate: leaveForm.from,
+          endDate: leaveForm.to,
+          reason: leaveForm.reason || 'Not specified',
+        }
+        const updatedLeave = await apiService.adminUpdateLeave(selectedLeaveId, leaveData)
+        setLeaves((prev) =>
+          prev.map((leave) => (leave.id === selectedLeaveId ? updatedLeave : leave))
+        )
       }
-      setLeaves((prev) =>
-        prev.map((leave) =>
-          leave.id === selectedLeaveId
-            ? {
-                ...leave,
-                userId: leaveForm.userId,
-                name: users.find((item) => item.id === leaveForm.userId)?.name ?? leave.name,
-                type: leaveForm.type,
-                from: leaveForm.from,
-                to: leaveForm.to,
-                days,
-              }
-            : leave,
-        ),
-      )
+      setShowLeaveModal(false)
+    } catch (error) {
+      console.error('Failed to save leave:', error)
+      setLeaveFormErrors({ general: error.message || 'Failed to save leave' })
     }
-    setShowLeaveModal(false)
   }
 
-  const handleLeaveDelete = () => {
+  const handleLeaveDelete = async () => {
     if (!selectedLeaveId) {
       setLeaveFormErrors({ general: 'Select a leave record to delete.' })
       return
     }
-    setLeaves((prev) => prev.filter((leave) => leave.id !== selectedLeaveId))
-    const remaining = leaves.filter((leave) => leave.id !== selectedLeaveId)
-    setSelectedLeaveId(remaining[0]?.id ?? '')
-    setShowLeaveModal(false)
+
+    try {
+      await apiService.deleteLeave(selectedLeaveId)
+      setLeaves((prev) => prev.filter((leave) => leave.id !== selectedLeaveId))
+      const remaining = leaves.filter((leave) => leave.id !== selectedLeaveId)
+      setSelectedLeaveId(remaining[0]?.id ?? '')
+      setShowLeaveModal(false)
+    } catch (error) {
+      console.error('Failed to delete leave:', error)
+      setLeaveFormErrors({ general: error.message || 'Failed to delete leave' })
+    }
   }
 
-  const handleLeaveApprove = () => {
+  const handleLeaveApprove = async () => {
     if (!selectedLeaveId) {
       return
     }
@@ -589,47 +595,37 @@ export default function AdminDashboard() {
       return
     }
     
-    // Update leave status to Approved
-    setLeaves((prev) =>
-      prev.map((item) =>
-        item.id === selectedLeaveId ? { ...item, status: 'Approved' } : item
+    try {
+      await apiService.updateLeaveStatus(selectedLeaveId, 'Approved')
+      setLeaves((prev) =>
+        prev.map((item) =>
+          item.id === selectedLeaveId ? { ...item, status: 'Approved' } : item
+        )
       )
-    )
 
-    // Deduct from user balance if Casual or Sick leave
-    if (leave.type === 'Casual' || leave.type === 'Sick') {
-      setUsers((prev) =>
-        prev.map((user) => {
-          if (user.id === leave.userId) {
-            if (leave.type === 'Casual') {
-              return {
-                ...user,
-                casualBalance: Math.max(0, user.casualBalance - leave.days),
-              }
-            }
-            if (leave.type === 'Sick') {
-              return {
-                ...user,
-                sickBalance: Math.max(0, user.sickBalance - leave.days),
-              }
-            }
-          }
-          return user
-        })
-      )
+      // Refresh users to get updated leave balances
+      const usersData = await apiService.getUsers()
+      setUsers(usersData)
+    } catch (error) {
+      console.error('Failed to approve leave:', error)
     }
   }
 
-  const handleLeaveReject = () => {
+  const handleLeaveReject = async () => {
     if (!selectedLeaveId) {
       return
     }
-    // Update leave status to Rejected
-    setLeaves((prev) =>
-      prev.map((item) =>
-        item.id === selectedLeaveId ? { ...item, status: 'Rejected' } : item
+    
+    try {
+      await apiService.updateLeaveStatus(selectedLeaveId, 'Rejected')
+      setLeaves((prev) =>
+        prev.map((item) =>
+          item.id === selectedLeaveId ? { ...item, status: 'Rejected' } : item
+        )
       )
-    )
+    } catch (error) {
+      console.error('Failed to reject leave:', error)
+    }
   }
 
   const handleSalarySubmit = (event) => {

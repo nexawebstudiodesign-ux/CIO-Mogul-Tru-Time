@@ -149,57 +149,79 @@ export default function UserDashboard() {
   }
 
   // Handlers
-  const handleUserAttendanceSubmit = (event) => {
+  const handleUserAttendanceSubmit = async (event) => {
     event.preventDefault()
     const errors = validateUserAttendance()
     setUserAttendanceErrors(errors)
     if (Object.keys(errors).length > 0) {
       return
     }
-    const loginDate = new Date(`1970-01-01T${userAttendanceForm.login}:00`)
-    const logoutDate = new Date(`1970-01-01T${userAttendanceForm.logout}:00`)
-    const hours = Math.round(((logoutDate - loginDate) / 3600000) * 10) / 10
-    const newRecord = {
-      userId: loggedUserId,
-      date: userAttendanceForm.date,
-      hours,
-      mails: Number(userAttendanceForm.mails),
-      data: Number(userAttendanceForm.data),
-      linkedin: Number(userAttendanceForm.linkedin),
-      followUps: Number(userAttendanceForm.followUps),
+
+    try {
+      const loginDate = new Date(`1970-01-01T${userAttendanceForm.login}:00`)
+      const logoutDate = new Date(`1970-01-01T${userAttendanceForm.logout}:00`)
+      const hours = Math.round(((logoutDate - loginDate) / 3600000) * 10) / 10
+      
+      const attendanceData = {
+        date: userAttendanceForm.date,
+        hours,
+        mails: Number(userAttendanceForm.mails),
+        dataEntry: Number(userAttendanceForm.data),
+        linkedinActivity: Number(userAttendanceForm.linkedin),
+        followUps: Number(userAttendanceForm.followUps),
+      }
+      
+      await apiService.createAttendance(attendanceData)
+      
+      const newRecord = {
+        userId: loggedUserId,
+        date: userAttendanceForm.date,
+        hours,
+        mails: Number(userAttendanceForm.mails),
+        data: Number(userAttendanceForm.data),
+        linkedin: Number(userAttendanceForm.linkedin),
+        followUps: Number(userAttendanceForm.followUps),
+      }
+      setAttendance((prev) => [newRecord, ...prev])
+      
+      setUserAttendanceForm({
+        date: '',
+        login: '',
+        logout: '',
+        mails: '',
+        data: '',
+        linkedin: '',
+        followUps: '',
+      })
+    } catch (error) {
+      console.error('Failed to submit attendance:', error)
+      setUserAttendanceErrors({ general: error.message || 'Failed to submit attendance' })
     }
-    setAttendance((prev) => [newRecord, ...prev])
-    setUserAttendanceForm({
-      date: '',
-      login: '',
-      logout: '',
-      mails: '',
-      data: '',
-      linkedin: '',
-      followUps: '',
-    })
   }
 
-  const handleUserLeaveSubmit = (event) => {
+  const handleUserLeaveSubmit = async (event) => {
     event.preventDefault()
     const errors = validateUserLeave()
     setUserLeaveErrors(errors)
     if (Object.keys(errors).length > 0) {
       return
     }
-    const days = Math.round((new Date(userLeaveForm.to) - new Date(userLeaveForm.from)) / 86400000) + 1
-    const newLeave = {
-      id: getNextLeaveId(leaves),
-      userId: loggedUserId,
-      name: loggedUser?.name ?? 'User',
-      type: userLeaveForm.type,
-      from: userLeaveForm.from,
-      to: userLeaveForm.to,
-      days,
-      status: 'Pending',
+
+    try {
+      const leaveData = {
+        type: userLeaveForm.type,
+        startDate: userLeaveForm.from,
+        endDate: userLeaveForm.to,
+        reason: userLeaveForm.reason || 'Not specified',
+      }
+      
+      const newLeave = await apiService.applyLeave(leaveData)
+      setLeaves((prev) => [newLeave, ...prev])
+      setUserLeaveForm({ type: 'Casual', from: '', to: '', reason: '' })
+    } catch (error) {
+      console.error('Failed to apply leave:', error)
+      setUserLeaveErrors({ general: error.message || 'Failed to apply leave' })
     }
-    setLeaves((prev) => [newLeave, ...prev])
-    setUserLeaveForm({ type: 'Casual', from: '', to: '', reason: '' })
   }
 
   if (!loggedUser) {
