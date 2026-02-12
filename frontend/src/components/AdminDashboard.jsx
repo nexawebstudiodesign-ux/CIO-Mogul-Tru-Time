@@ -30,11 +30,12 @@ export default function AdminDashboard() {
   const [modalMode, setModalMode] = useState('add')
 
   const [userForm, setUserForm] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     email: '',
     password: '',
-    casualBalance: '',
-    sickBalance: '',
+    casualBalance: '0',
+    sickBalance: '0',
   })
   const [userFormErrors, setUserFormErrors] = useState({})
 
@@ -261,17 +262,20 @@ export default function AdminDashboard() {
     setModalMode(mode)
     setUserFormErrors({})
     if (mode === 'add') {
-      setUserForm({ name: '', email: '', password: '', casualBalance: '12', sickBalance: '12' })
+      setUserForm({ firstName: '', lastName: '', email: '', password: '', casualBalance: '0', sickBalance: '0' })
     }
     if (mode === 'edit') {
       const user = users.find((item) => item.id === selectedUserId)
       if (user) {
+        const [firstName = '', ...lastNameParts] = user.name.split(' ')
+        const lastName = lastNameParts.join(' ')
         setUserForm({
-          name: user.name,
+          firstName,
+          lastName,
           email: user.email,
           password: '',
-          casualBalance: String(user.casualBalance ?? 12),
-          sickBalance: String(user.sickBalance ?? 12),
+          casualBalance: String(user.casualBalance ?? 0),
+          sickBalance: String(user.sickBalance ?? 0),
         })
       }
     }
@@ -341,8 +345,11 @@ export default function AdminDashboard() {
 
   const validateUserForm = (mode) => {
     const errors = {}
-    if (!userForm.name.trim()) {
-      errors.name = 'Name is required.'
+    if (!userForm.firstName.trim()) {
+      errors.firstName = 'First name is required.'
+    }
+    if (!userForm.lastName.trim()) {
+      errors.lastName = 'Last name is required.'
     }
     if (!userForm.email.trim()) {
       errors.email = 'Email is required.'
@@ -427,7 +434,7 @@ export default function AdminDashboard() {
     if (modalMode === 'add') {
       const newUser = {
         id: getNextEmployeeId(users),
-        name: userForm.name.trim(),
+        name: `${userForm.firstName.trim()} ${userForm.lastName.trim()}`,
         email: userForm.email.trim(),
         status: 'Active',
         casualBalance: clampBalance(Number(userForm.casualBalance || 0)),
@@ -443,7 +450,7 @@ export default function AdminDashboard() {
           user.id === selectedUserId
             ? {
                 ...user,
-                name: userForm.name.trim(),
+                name: `${userForm.firstName.trim()} ${userForm.lastName.trim()}`,
                 email: userForm.email.trim(),
                 casualBalance: clampBalance(Number(userForm.casualBalance || 0)),
                 sickBalance: clampBalance(Number(userForm.sickBalance || 0)),
@@ -1230,21 +1237,35 @@ export default function AdminDashboard() {
                 <div>
                   <input
                     className="input-field"
-                    placeholder="Full name"
+                    placeholder="First Name"
                     required
-                    value={userForm.name}
-                    onChange={(event) => setUserForm((prev) => ({ ...prev, name: event.target.value }))}
+                    value={userForm.firstName}
+                    onChange={(event) => setUserForm((prev) => ({ ...prev, firstName: event.target.value }))}
                   />
-                  {userFormErrors.name && <p className="mt-1 text-xs text-red-500">{userFormErrors.name}</p>}
+                  <p className="mt-1 text-xs text-ink-300">Employee's first name</p>
+                  {userFormErrors.firstName && <p className="mt-1 text-xs text-red-500">{userFormErrors.firstName}</p>}
                 </div>
                 <div>
                   <input
                     className="input-field"
-                    placeholder="Email"
+                    placeholder="Last Name"
+                    required
+                    value={userForm.lastName}
+                    onChange={(event) => setUserForm((prev) => ({ ...prev, lastName: event.target.value }))}
+                  />
+                  <p className="mt-1 text-xs text-ink-300">Employee's last name</p>
+                  {userFormErrors.lastName && <p className="mt-1 text-xs text-red-500">{userFormErrors.lastName}</p>}
+                </div>
+                <div>
+                  <input
+                    className="input-field"
+                    placeholder="Email Address"
+                    type="email"
                     required
                     value={userForm.email}
                     onChange={(event) => setUserForm((prev) => ({ ...prev, email: event.target.value }))}
                   />
+                  <p className="mt-1 text-xs text-ink-300">Valid email address for login</p>
                   {userFormErrors.email && <p className="mt-1 text-xs text-red-500">{userFormErrors.email}</p>}
                 </div>
                 <div>
@@ -1256,6 +1277,7 @@ export default function AdminDashboard() {
                     value={userForm.password}
                     onChange={(event) => setUserForm((prev) => ({ ...prev, password: event.target.value }))}
                   />
+                  <p className="mt-1 text-xs text-ink-300">Minimum 6 characters</p>
                   {userFormErrors.password && (
                     <p className="mt-1 text-xs text-red-500">{userFormErrors.password}</p>
                   )}
@@ -1263,13 +1285,17 @@ export default function AdminDashboard() {
                 <div>
                   <input
                     className="input-field"
-                    placeholder="Casual leave (0-12)"
+                    placeholder="Casual Leave Balance"
+                    type="number"
+                    min="0"
+                    max="12"
                     required
                     value={userForm.casualBalance}
                     onChange={(event) =>
                       setUserForm((prev) => ({ ...prev, casualBalance: event.target.value }))
                     }
                   />
+                  <p className="mt-1 text-xs text-ink-300">Number of casual leave days (0-12)</p>
                   {userFormErrors.casualBalance && (
                     <p className="mt-1 text-xs text-red-500">{userFormErrors.casualBalance}</p>
                   )}
@@ -1277,17 +1303,24 @@ export default function AdminDashboard() {
                 <div>
                   <input
                     className="input-field"
-                    placeholder="Sick leave (0-12)"
+                    placeholder="Sick Leave Balance"
+                    type="number"
+                    min="0"
+                    max="12"
                     required
                     value={userForm.sickBalance}
                     onChange={(event) =>
                       setUserForm((prev) => ({ ...prev, sickBalance: event.target.value }))
                     }
                   />
+                  <p className="mt-1 text-xs text-ink-300">Number of sick leave days (0-12)</p>
                   {userFormErrors.sickBalance && (
                     <p className="mt-1 text-xs text-red-500">{userFormErrors.sickBalance}</p>
                   )}
                 </div>
+                {modalMode === 'add' && (
+                  <p className="text-xs text-ink-300">Employee ID will be auto-generated (e.g., CIO-0001, CIO-0002)</p>
+                )}
                 <button className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white">
                   Save
                 </button>
