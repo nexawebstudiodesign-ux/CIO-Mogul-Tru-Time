@@ -15,7 +15,7 @@ export function AppProvider({ children }) {
   const [attendance, setAttendance] = useState(initialAttendance)
   const [monthlySalaries, setMonthlySalaries] = useState(initialMonthlySalaries)
   const [selectedMonth, setSelectedMonth] = useState(currentMonth)
-  const [selectedUserId, setSelectedUserId] = useState(initialUsers[0].id)
+  const [selectedUserId, setSelectedUserId] = useState(initialUsers[0]?.id ?? '')
   const [selectedLeaveId, setSelectedLeaveId] = useState(initialLeaves[0]?.id ?? '')
 
   // Admin auth
