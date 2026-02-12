@@ -26,6 +26,12 @@ export class LeaveController {
     return this.leaveService.listMyLeaves(req.user?.id ?? '');
   }
 
+  @Delete('cancel/:id')
+  @Roles(Role.USER)
+  cancelLeave(@Req() req: { user?: { id?: string } }, @Param('id') id: string) {
+    return this.leaveService.cancelLeave(req.user?.id ?? '', id);
+  }
+
   @Get()
   @Roles(Role.ADMIN)
   listAll(@Query('status') status?: string) {

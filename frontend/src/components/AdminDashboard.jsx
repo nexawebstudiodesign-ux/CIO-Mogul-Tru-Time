@@ -1165,6 +1165,13 @@ export default function AdminDashboard() {
                 Close
               </button>
             </div>
+            {!monthlySalaries.find((s) => s.userId === selectedUserId && s.month === selectedMonth) && (
+              <div className="mt-3 rounded-lg bg-blue-50 p-2 border border-blue-200">
+                <p className="text-xs text-blue-800">
+                  ℹ️ Note: You can only create salary records for the current month or next month
+                </p>
+              </div>
+            )}
             <form className="mt-4 grid gap-4 sm:grid-cols-2" onSubmit={handleSalarySubmit}>
               <div>
                 <label className="text-xs font-semibold text-ink-400">Number of Working Days <span className="text-ink-300">(Optional)</span></label>

@@ -167,6 +167,12 @@ class ApiService {
     })
   }
 
+  async cancelLeave(leaveId) {
+    return this.request(`/leave/cancel/${leaveId}`, {
+      method: 'DELETE',
+    })
+  }
+
   // Salary endpoints
   async createSalary(salaryData) {
     return this.request('/salary', {

@@ -48,13 +48,27 @@ export class LeaveService {
       throw new BadRequestException('To date must be after from date');
     }
 
-    // Validation 2: Cannot apply leave for dates older than 7 days
+    // Validation 2: Only allow leave for current month or next month
+    const todayDate = new Date();
+    const currentYear = todayDate.getFullYear();
+    const currentMonth = todayDate.getMonth();
+    const [fromYear, fromMonth] = fromDate.split('-').map(Number);
+    const [toYear, toMonth] = toDate.split('-').map(Number);
+    
+    const fromMonthDiff = (fromYear - currentYear) * 12 + (fromMonth - currentMonth - 1);
+    const toMonthDiff = (toYear - currentYear) * 12 + (toMonth - currentMonth - 1);
+    
+    if (fromMonthDiff > 1 || toMonthDiff > 1) {
+      throw new BadRequestException('You can only apply for leave in the current month or next month');
+    }
+
+    // Validation 3: Cannot apply leave for dates older than 7 days
     const daysDifference = this.calculateDaysDifference(fromDate, today);
     if (fromDate < today && daysDifference > 7) {
       throw new BadRequestException('Cannot apply leave for dates older than 7 days');
     }
 
-    // Validation 3: Check for overlapping leaves
+    // Validation 4: Check for overlapping leaves
     const { data: existingLeaves, error: overlapError } = await this.supabaseService.client
       .from('leaves')
       .select('id,from_date,to_date,status')
@@ -71,7 +85,7 @@ export class LeaveService {
       throw new BadRequestException('You already have a pending or approved leave during this period');
     }
 
-    // Validation 4: Check leave balance before allowing CASUAL or SICK leave
+    // Validation 5: Check leave balance and deduct immediately for CASUAL or SICK leave
     if (dto.leaveType === 'CASUAL' || dto.leaveType === 'SICK') {
       const { data: user, error: userError } = await this.supabaseService.client
         .from('users')
@@ -90,9 +104,19 @@ export class LeaveService {
           `Insufficient leave balance. You have ${user.leave_balance} days available but requesting ${requestedDays} days. Please apply for PAID leave instead, or kindly contact Admin at info@theciomogul.com for assistance.`
         );
       }
+
+      // Deduct balance immediately when applying
+      const { error: updateError } = await this.supabaseService.client
+        .from('users')
+        .update({ leave_balance: user.leave_balance - requestedDays })
+        .eq('id', userId);
+      
+      if (updateError) {
+        throw new BadRequestException('Unable to update leave balance');
+      }
     }
 
-    // Validation 5: Minimum reason length
+    // Validation 6: Minimum reason length
     if (dto.reason.trim().length < 10) {
       throw new BadRequestException('Leave reason must be at least 10 characters');
     }
@@ -145,7 +169,7 @@ export class LeaveService {
   async updateStatus(leaveId: string, dto: UpdateLeaveStatusDto) {
     const { data: leave, error: leaveError } = await this.supabaseService.client
       .from('leaves')
-      .select('id,user_id,from_date,to_date,status')
+      .select('id,user_id,leave_type,from_date,to_date,reason,status')
       .eq('id', leaveId)
       .maybeSingle();
     if (leaveError || !leave) {
@@ -156,7 +180,8 @@ export class LeaveService {
       return leave;
     }
 
-    if (dto.status === 'APPROVED') {
+    // When rejecting a leave, restore the balance for CASUAL/SICK leaves
+    if (dto.status === 'REJECTED' && (leave.leave_type === 'CASUAL' || leave.leave_type === 'SICK')) {
       const days = this.countDays(leave.from_date, leave.to_date);
       const { data: user, error: userError } = await this.supabaseService.client
         .from('users')
@@ -166,17 +191,18 @@ export class LeaveService {
       if (userError || !user) {
         throw new NotFoundException('User not found');
       }
-      if (user.leave_balance < days) {
-        throw new BadRequestException('Insufficient leave balance');
-      }
+      // Restore the balance that was deducted at application time
       const { error: updateBalanceError } = await this.supabaseService.client
         .from('users')
-        .update({ leave_balance: user.leave_balance - days })
+        .update({ leave_balance: user.leave_balance + days })
         .eq('id', user.id);
       if (updateBalanceError) {
-        throw new BadRequestException('Unable to update leave balance');
+        throw new BadRequestException('Unable to restore leave balance');
       }
     }
+
+    // Note: No balance deduction on approval since balance is already deducted at application time
+    
     const { data: updated, error: updateError } = await this.supabaseService.client
       .from('leaves')
       .update({ status: dto.status })
@@ -187,6 +213,66 @@ export class LeaveService {
       throw new BadRequestException('Unable to update leave status');
     }
     return updated;
+  }
+
+  async cancelLeave(userId: string, leaveId: string) {
+    const { data: leave, error: leaveError } = await this.supabaseService.client
+      .from('leaves')
+      .select('id,user_id,leave_type,from_date,to_date,status')
+      .eq('id', leaveId)
+      .eq('user_id', userId)
+      .maybeSingle();
+    
+    if (leaveError || !leave) {
+      throw new NotFoundException('Leave request not found');
+    }
+
+    // Cannot cancel if already rejected
+    if (leave.status === 'REJECTED') {
+      throw new BadRequestException('Cannot cancel a rejected leave');
+    }
+
+    // Cannot cancel if end date has passed
+    const today = this.normalizeDate(new Date().toISOString());
+    if (leave.to_date < today) {
+      throw new BadRequestException('Cannot cancel leave after the end date has passed');
+    }
+
+    // Restore balance for CASUAL/SICK leaves
+    if ((leave.status === 'PENDING' || leave.status === 'APPROVED') && 
+        (leave.leave_type === 'CASUAL' || leave.leave_type === 'SICK')) {
+      const days = this.countDays(leave.from_date, leave.to_date);
+      const { data: user, error: userError } = await this.supabaseService.client
+        .from('users')
+        .select('id,leave_balance')
+        .eq('id', userId)
+        .maybeSingle();
+      
+      if (userError || !user) {
+        throw new NotFoundException('User not found');
+      }
+
+      const { error: updateBalanceError } = await this.supabaseService.client
+        .from('users')
+        .update({ leave_balance: user.leave_balance + days })
+        .eq('id', userId);
+      
+      if (updateBalanceError) {
+        throw new BadRequestException('Unable to restore leave balance');
+      }
+    }
+
+    // Delete the leave record
+    const { error: deleteError } = await this.supabaseService.client
+      .from('leaves')
+      .delete()
+      .eq('id', leaveId);
+    
+    if (deleteError) {
+      throw new BadRequestException('Unable to cancel leave');
+    }
+
+    return { message: 'Leave cancelled successfully', balanceRestored: leave.leave_type === 'CASUAL' || leave.leave_type === 'SICK' };
   }
 
   async adminUpdateLeave(leaveId: string, dto: AdminUpdateLeaveDto) {

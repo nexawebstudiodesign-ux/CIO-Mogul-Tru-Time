@@ -26,7 +26,7 @@ export class SalaryService {
       );
     }
 
-    // Validation 2: Prevent salary creation for future months (beyond next month)
+    // Validation 2: Only allow current month or next month
     const today = new Date();
     const currentYear = today.getFullYear();
     const currentMonth = today.getMonth() + 1; // getMonth() returns 0-11
@@ -34,8 +34,11 @@ export class SalaryService {
     
     const monthsDiff = (year - currentYear) * 12 + (month - currentMonth);
     if (monthsDiff > 1) {
+      const currentMonthStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+      const nextMonthDate = new Date(currentYear, currentMonth, 1);
+      const nextMonthStr = `${nextMonthDate.getFullYear()}-${String(nextMonthDate.getMonth() + 1).padStart(2, '0')}`;
       throw new BadRequestException(
-        'Cannot create salary records for months beyond next month'
+        `You can only create salary records for the current month (${currentMonthStr}) or next month (${nextMonthStr}). Cannot create for ${createSalaryDto.month}.`
       );
     }
 

@@ -8,6 +8,7 @@ export default function UserDashboard() {
   const {
     users,
     loggedUser,
+    setLoggedUser,
     loggedUserId,
     leaves,
     setLeaves,
@@ -277,9 +278,33 @@ export default function UserDashboard() {
       setLeaves((prev) => [newLeave, ...prev])
       setUserLeaveForm({ type: 'CASUAL', from: '', to: '', reason: '' })
       setUserLeaveErrors({})
+      
+      // Refresh user data to update leave balance
+      const updatedUser = await apiService.getMe()
+      setLoggedUser(updatedUser)
+      localStorage.setItem('ciomogul_user', JSON.stringify(updatedUser))
     } catch (error) {
       console.error('Failed to apply leave:', error)
       setUserLeaveErrors({ general: error.message || 'Failed to apply leave. Please try again.' })
+    }
+  }
+
+  const handleCancelLeave = async (leaveId) => {
+    if (!window.confirm('Are you sure you want to cancel this leave? Your balance will be restored if applicable.')) {
+      return
+    }
+
+    try {
+      await apiService.cancelLeave(leaveId)
+      setLeaves((prev) => prev.filter((leave) => leave.id !== leaveId))
+      
+      // Refresh user data to update leave balance
+      const updatedUser = await apiService.getMe()
+      setLoggedUser(updatedUser)
+      localStorage.setItem('ciomogul_user', JSON.stringify(updatedUser))
+    } catch (error) {
+      console.error('Failed to cancel leave:', error)
+      alert(error.message || 'Failed to cancel leave. Please try again.')
     }
   }
 
@@ -630,25 +655,46 @@ export default function UserDashboard() {
           <section className="glass-panel rounded-3xl p-6 shadow-lift">
             <h3 className="text-sm font-semibold text-ink-500">My Leave Requests</h3>
             <div className="mt-3 overflow-hidden rounded-2xl border border-sand-200">
-              <div className="grid grid-cols-[1fr_0.8fr_0.6fr_0.6fr] bg-sand-50 px-4 py-3 text-xs uppercase tracking-[0.2em] text-ink-300">
+              <div className="grid grid-cols-[1fr_0.8fr_0.6fr_0.6fr_0.6fr] bg-sand-50 px-4 py-3 text-xs uppercase tracking-[0.2em] text-ink-300">
                 <span>Type</span>
                 <span>Date Range</span>
                 <span>Days</span>
                 <span>Status</span>
+                <span>Action</span>
               </div>
-              {loggedUserLeaves.map((leave) => (
-                <div
-                  key={leave.id}
-                  className="grid grid-cols-[1fr_0.8fr_0.6fr_0.6fr] items-center border-t border-sand-100 px-4 py-3 text-sm"
-                >
-                  <span className="font-semibold text-ink-500">{leave.type}</span>
-                  <span className="text-ink-400">
-                    {leave.from} → {leave.to}
-                  </span>
-                  <span className="text-ink-400">{leave.days}</span>
-                  <span className="pill bg-sand-100 text-ink-300">{leave.status}</span>
-                </div>
-              ))}
+              {loggedUserLeaves.map((leave) => {
+                const today = new Date()
+                today.setHours(0, 0, 0, 0)
+                const leaveEndDate = new Date(leave.to)
+                leaveEndDate.setHours(0, 0, 0, 0)
+                const canCancel = (leave.status === 'PENDING' || leave.status === 'APPROVED') && leaveEndDate >= today
+                
+                return (
+                  <div
+                    key={leave.id}
+                    className="grid grid-cols-[1fr_0.8fr_0.6fr_0.6fr_0.6fr] items-center border-t border-sand-100 px-4 py-3 text-sm"
+                  >
+                    <span className="font-semibold text-ink-500">{leave.type}</span>
+                    <span className="text-ink-400">
+                      {leave.from} → {leave.to}
+                    </span>
+                    <span className="text-ink-400">{leave.days}</span>
+                    <span className="pill bg-sand-100 text-ink-300">{leave.status}</span>
+                    <span>
+                      {canCancel ? (
+                        <button
+                          onClick={() => handleCancelLeave(leave.id)}
+                          className="text-xs font-medium text-red-600 hover:text-red-700 hover:underline"
+                        >
+                          Cancel
+                        </button>
+                      ) : (
+                        <span className="text-xs text-ink-200">—</span>
+                      )}
+                    </span>
+                  </div>
+                )
+              })}
               {loggedUserLeaves.length === 0 && (
                 <div className="px-4 py-6 text-sm text-ink-300">No leave records for this month.</div>
               )}
