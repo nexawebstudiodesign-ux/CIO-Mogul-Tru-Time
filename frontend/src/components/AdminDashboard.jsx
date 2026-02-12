@@ -424,32 +424,33 @@ export default function AdminDashboard() {
 
   const validateSalaryForm = () => {
     const errors = {}
-    if (!salaryForm.workingDays || Number.isNaN(Number(salaryForm.workingDays)) || Number(salaryForm.workingDays) < 1 || Number(salaryForm.workingDays) > 31) {
-      errors.workingDays = 'Valid working days required (1-31).'
+    // All fields are optional, only validate format if provided
+    if (salaryForm.workingDays && (Number.isNaN(Number(salaryForm.workingDays)) || Number(salaryForm.workingDays) < 1 || Number(salaryForm.workingDays) > 31)) {
+      errors.workingDays = 'Working days must be between 1 and 31'
     }
-    if (!salaryForm.baseSalary || Number.isNaN(Number(salaryForm.baseSalary)) || Number(salaryForm.baseSalary) < 0) {
-      errors.baseSalary = 'Valid base salary required.'
+    if (salaryForm.baseSalary && (Number.isNaN(Number(salaryForm.baseSalary)) || Number(salaryForm.baseSalary) < 0)) {
+      errors.baseSalary = 'Base salary must be 0 or greater'
     }
     if (salaryForm.hra && (Number.isNaN(Number(salaryForm.hra)) || Number(salaryForm.hra) < 0)) {
-      errors.hra = 'Valid HRA required.'
+      errors.hra = 'HRA must be 0 or greater'
     }
     if (salaryForm.transportAllowance && (Number.isNaN(Number(salaryForm.transportAllowance)) || Number(salaryForm.transportAllowance) < 0)) {
-      errors.transportAllowance = 'Valid transport allowance required.'
+      errors.transportAllowance = 'Transport allowance must be 0 or greater'
     }
     if (salaryForm.otherAllowance && (Number.isNaN(Number(salaryForm.otherAllowance)) || Number(salaryForm.otherAllowance) < 0)) {
-      errors.otherAllowance = 'Valid other allowance required.'
+      errors.otherAllowance = 'Other allowance must be 0 or greater'
     }
     if (salaryForm.performanceBonus && (Number.isNaN(Number(salaryForm.performanceBonus)) || Number(salaryForm.performanceBonus) < 0)) {
-      errors.performanceBonus = 'Valid bonus required (0 or more).'
+      errors.performanceBonus = 'Performance bonus must be 0 or greater'
     }
     if (salaryForm.pfDeduction && (Number.isNaN(Number(salaryForm.pfDeduction)) || Number(salaryForm.pfDeduction) < 0)) {
-      errors.pfDeduction = 'Valid PF deduction required.'
+      errors.pfDeduction = 'PF deduction must be 0 or greater'
     }
     if (salaryForm.taxDeduction && (Number.isNaN(Number(salaryForm.taxDeduction)) || Number(salaryForm.taxDeduction) < 0)) {
-      errors.taxDeduction = 'Valid tax deduction required.'
+      errors.taxDeduction = 'Tax deduction must be 0 or greater'
     }
     if (salaryForm.otherDeduction && (Number.isNaN(Number(salaryForm.otherDeduction)) || Number(salaryForm.otherDeduction) < 0)) {
-      errors.otherDeduction = 'Valid other deduction required (0 or more).'
+      errors.otherDeduction = 'Other deduction must be 0 or greater'
     }
     return errors
   }
@@ -1149,7 +1150,7 @@ export default function AdminDashboard() {
             </div>
             <form className="mt-4 grid gap-4 sm:grid-cols-2" onSubmit={handleSalarySubmit}>
               <div>
-                <label className="text-xs font-semibold text-ink-400">Number of Working Days</label>
+                <label className="text-xs font-semibold text-ink-400">Number of Working Days <span className="text-ink-300">(Optional)</span></label>
                 <input
                   className="input-field mt-1"
                   type="number"
@@ -1159,12 +1160,13 @@ export default function AdminDashboard() {
                   value={salaryForm.workingDays}
                   onChange={(e) => setSalaryForm((prev) => ({ ...prev, workingDays: e.target.value }))}
                 />
+                <p className="mt-1 text-xs text-ink-300">Number of days employee worked this month (1-31)</p>
                 {salaryFormErrors.workingDays && (
                   <p className="mt-1 text-xs text-red-500">{salaryFormErrors.workingDays}</p>
                 )}
               </div>
               <div>
-                <label className="text-xs font-semibold text-ink-400">Base Salary</label>
+                <label className="text-xs font-semibold text-ink-400">Base Salary <span className="text-ink-300">(Optional)</span></label>
                 <input
                   className="input-field mt-1"
                   type="number"
@@ -1174,12 +1176,13 @@ export default function AdminDashboard() {
                   value={salaryForm.baseSalary}
                   onChange={(e) => setSalaryForm((prev) => ({ ...prev, baseSalary: e.target.value }))}
                 />
+                <p className="mt-1 text-xs text-ink-300">Fixed monthly base salary amount</p>
                 {salaryFormErrors.baseSalary && (
                   <p className="mt-1 text-xs text-red-500">{salaryFormErrors.baseSalary}</p>
                 )}
               </div>
               <div>
-                <label className="text-xs font-semibold text-ink-400">HRA</label>
+                <label className="text-xs font-semibold text-ink-400">HRA <span className="text-ink-300">(Optional)</span></label>
                 <input
                   className="input-field mt-1"
                   type="number"
@@ -1189,10 +1192,11 @@ export default function AdminDashboard() {
                   value={salaryForm.hra}
                   onChange={(e) => setSalaryForm((prev) => ({ ...prev, hra: e.target.value }))}
                 />
+                <p className="mt-1 text-xs text-ink-300">House Rent Allowance</p>
                 {salaryFormErrors.hra && <p className="mt-1 text-xs text-red-500">{salaryFormErrors.hra}</p>}
               </div>
               <div>
-                <label className="text-xs font-semibold text-ink-400">Transport Allowance</label>
+                <label className="text-xs font-semibold text-ink-400">Transport Allowance <span className="text-ink-300">(Optional)</span></label>
                 <input
                   className="input-field mt-1"
                   type="number"
@@ -1202,12 +1206,13 @@ export default function AdminDashboard() {
                   value={salaryForm.transportAllowance}
                   onChange={(e) => setSalaryForm((prev) => ({ ...prev, transportAllowance: e.target.value }))}
                 />
+                <p className="mt-1 text-xs text-ink-300">Travel and commute allowance</p>
                 {salaryFormErrors.transportAllowance && (
                   <p className="mt-1 text-xs text-red-500">{salaryFormErrors.transportAllowance}</p>
                 )}
               </div>
               <div>
-                <label className="text-xs font-semibold text-ink-400">Other Allowance</label>
+                <label className="text-xs font-semibold text-ink-400">Other Allowance <span className="text-ink-300">(Optional)</span></label>
                 <input
                   className="input-field mt-1"
                   type="number"
@@ -1217,12 +1222,13 @@ export default function AdminDashboard() {
                   value={salaryForm.otherAllowance}
                   onChange={(e) => setSalaryForm((prev) => ({ ...prev, otherAllowance: e.target.value }))}
                 />
+                <p className="mt-1 text-xs text-ink-300">Any other additional allowances</p>
                 {salaryFormErrors.otherAllowance && (
                   <p className="mt-1 text-xs text-red-500">{salaryFormErrors.otherAllowance}</p>
                 )}
               </div>
               <div className="sm:col-span-2">
-                <label className="text-xs font-semibold text-green-700">Performance Bonus (if applicable)</label>
+                <label className="text-xs font-semibold text-green-700">Performance Bonus <span className="text-ink-300">(Optional)</span></label>
                 <input
                   className="input-field mt-1"
                   type="number"
@@ -1232,12 +1238,13 @@ export default function AdminDashboard() {
                   value={salaryForm.performanceBonus}
                   onChange={(e) => setSalaryForm((prev) => ({ ...prev, performanceBonus: e.target.value }))}
                 />
+                <p className="mt-1 text-xs text-ink-300">Additional bonus based on performance</p>
                 {salaryFormErrors.performanceBonus && (
                   <p className="mt-1 text-xs text-red-500">{salaryFormErrors.performanceBonus}</p>
                 )}
               </div>
               <div>
-                <label className="text-xs font-semibold text-ink-400">PF Deduction</label>
+                <label className="text-xs font-semibold text-ink-400">PF Deduction <span className="text-ink-300">(Optional)</span></label>
                 <input
                   className="input-field mt-1"
                   type="number"
@@ -1247,12 +1254,13 @@ export default function AdminDashboard() {
                   value={salaryForm.pfDeduction}
                   onChange={(e) => setSalaryForm((prev) => ({ ...prev, pfDeduction: e.target.value }))}
                 />
+                <p className="mt-1 text-xs text-ink-300">Provident Fund deduction</p>
                 {salaryFormErrors.pfDeduction && (
                   <p className="mt-1 text-xs text-red-500">{salaryFormErrors.pfDeduction}</p>
                 )}
               </div>
               <div>
-                <label className="text-xs font-semibold text-ink-400">Tax Deduction (TDS)</label>
+                <label className="text-xs font-semibold text-ink-400">Tax Deduction (TDS) <span className="text-ink-300">(Optional)</span></label>
                 <input
                   className="input-field mt-1"
                   type="number"
@@ -1262,12 +1270,13 @@ export default function AdminDashboard() {
                   value={salaryForm.taxDeduction}
                   onChange={(e) => setSalaryForm((prev) => ({ ...prev, taxDeduction: e.target.value }))}
                 />
+                <p className="mt-1 text-xs text-ink-300">Tax Deducted at Source</p>
                 {salaryFormErrors.taxDeduction && (
                   <p className="mt-1 text-xs text-red-500">{salaryFormErrors.taxDeduction}</p>
                 )}
               </div>
               <div className="sm:col-span-2">
-                <label className="text-xs font-semibold text-ink-400">Other Deductions</label>
+                <label className="text-xs font-semibold text-ink-400">Other Deductions <span className="text-ink-300">(Optional)</span></label>
                 <input
                   className="input-field mt-1"
                   type="number"
@@ -1277,6 +1286,7 @@ export default function AdminDashboard() {
                   value={salaryForm.otherDeduction}
                   onChange={(e) => setSalaryForm((prev) => ({ ...prev, otherDeduction: e.target.value }))}
                 />
+                <p className="mt-1 text-xs text-ink-300">Any other deductions from salary</p>
                 {salaryFormErrors.otherDeduction && (
                   <p className="mt-1 text-xs text-red-500">{salaryFormErrors.otherDeduction}</p>
                 )}
