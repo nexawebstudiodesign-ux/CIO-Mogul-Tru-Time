@@ -1,0 +1,8 @@
+node_modules
+.env
+.env.local
+.git
+test
+*.md
+.prettierrc
+eslint.config.mjs
