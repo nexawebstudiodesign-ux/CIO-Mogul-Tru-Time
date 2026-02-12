@@ -30,7 +30,7 @@ export default function UserDashboard() {
   })
   const [userAttendanceErrors, setUserAttendanceErrors] = useState({})
 
-  const [userLeaveForm, setUserLeaveForm] = useState({ type: 'Casual', from: '', to: '', reason: '' })
+  const [userLeaveForm, setUserLeaveForm] = useState({ type: 'CASUAL', from: '', to: '', reason: '' })
   const [userLeaveErrors, setUserLeaveErrors] = useState({})
 
   // Configurable holidays (should match backend)
@@ -137,46 +137,56 @@ export default function UserDashboard() {
   const validateUserLeave = () => {
     const errors = {}
     const today = new Date()
-    const oneMonthAgo = new Date(today)
-    oneMonthAgo.setMonth(today.getMonth() - 1)
-    oneMonthAgo.setHours(0, 0, 0, 0)
+    today.setHours(0, 0, 0, 0)
+    const sevenDaysAgo = new Date(today)
+    sevenDaysAgo.setDate(today.getDate() - 7)
     
     if (!userLeaveForm.from) {
       errors.from = 'From date is required.'
     } else {
-      const fromDate = new Date(userLeaveForm.from)
-      if (fromDate < oneMonthAgo) {
-        errors.from = 'Cannot apply leave for dates older than 1 month.'
+      const fromDate = new Date(userLeaveForm.from + 'T00:00:00')
+      if (fromDate < sevenDaysAgo) {
+        errors.from = 'Cannot apply leave for dates older than 7 days.'
       }
     }
     
     if (!userLeaveForm.to) {
       errors.to = 'To date is required.'
     } else {
-      const toDate = new Date(userLeaveForm.to)
-      if (toDate < oneMonthAgo) {
-        errors.to = 'Cannot apply leave for dates older than 1 month.'
+      const toDate = new Date(userLeaveForm.to + 'T00:00:00')
+      if (toDate < sevenDaysAgo) {
+        errors.to = 'Cannot apply leave for dates older than 7 days.'
       }
     }
     
     if (userLeaveForm.from && userLeaveForm.to && userLeaveForm.to < userLeaveForm.from) {
       errors.to = 'To date must be after From date.'
     }
+    
+    // Reason validation - minimum 10 characters
     if (!userLeaveForm.reason.trim()) {
-      errors.reason = 'Reason is required.'
+      errors.reason = 'Reason is required (minimum 10 characters).'
+    } else if (userLeaveForm.reason.trim().length < 10) {
+      errors.reason = `Reason must be at least 10 characters (current: ${userLeaveForm.reason.trim().length}).`
+    }
+    
+    // Calculate requested days
+    let requestedDays = 0
+    if (userLeaveForm.from && userLeaveForm.to) {
+      const from = new Date(userLeaveForm.from + 'T00:00:00')
+      const to = new Date(userLeaveForm.to + 'T00:00:00')
+      const diffTime = to.getTime() - from.getTime()
+      requestedDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1
     }
     
     // Check leave balance
-    if (userLeaveForm.type === 'Casual') {
-      const casualBalance = loggedUser?.casualBalance || 0
-      if (casualBalance === 0) {
-        errors.type = 'Casual leave balance is 0. Please select Paid leave.'
-      }
-    }
-    if (userLeaveForm.type === 'Sick') {
-      const sickBalance = loggedUser?.sickBalance || 0
-      if (sickBalance === 0) {
-        errors.type = 'Sick leave balance is 0. Please select Paid leave.'
+    const leaveBalance = loggedUser?.leaveBalance || 0
+    
+    if (userLeaveForm.type === 'CASUAL' || userLeaveForm.type === 'SICK') {
+      if (leaveBalance === 0) {
+        errors.type = 'Leave balance is 0. Please select PAID leave option.'
+      } else if (requestedDays > leaveBalance) {
+        errors.type = `Insufficient balance. You have ${leaveBalance} days but requesting ${requestedDays} days. Please select PAID leave or reduce days.`
       }
     }
     
@@ -257,18 +267,19 @@ export default function UserDashboard() {
 
     try {
       const leaveData = {
-        type: userLeaveForm.type,
-        startDate: userLeaveForm.from,
-        endDate: userLeaveForm.to,
-        reason: userLeaveForm.reason || 'Not specified',
+        leaveType: userLeaveForm.type,
+        fromDate: userLeaveForm.from,
+        toDate: userLeaveForm.to,
+        reason: userLeaveForm.reason.trim(),
       }
       
       const newLeave = await apiService.applyLeave(leaveData)
       setLeaves((prev) => [newLeave, ...prev])
-      setUserLeaveForm({ type: 'Casual', from: '', to: '', reason: '' })
+      setUserLeaveForm({ type: 'CASUAL', from: '', to: '', reason: '' })
+      setUserLeaveErrors({})
     } catch (error) {
       console.error('Failed to apply leave:', error)
-      setUserLeaveErrors({ general: error.message || 'Failed to apply leave' })
+      setUserLeaveErrors({ general: error.message || 'Failed to apply leave. Please try again.' })
     }
   }
 
@@ -505,17 +516,12 @@ export default function UserDashboard() {
           <section className="glass-panel rounded-3xl p-6 shadow-lift">
             <h2 className="section-title text-xl">Apply Leave</h2>
             <div className="mt-3 rounded-xl bg-blue-50 p-3">
-              <p className="text-xs font-semibold text-blue-700 mb-2">Leave Balance</p>
-              <div className="flex gap-4">
-                <div>
-                  <span className="text-xs text-blue-600">Casual: </span>
-                  <span className="text-sm font-bold text-blue-900">{loggedUser?.casualBalance || 0} days</span>
-                </div>
-                <div>
-                  <span className="text-xs text-blue-600">Sick: </span>
-                  <span className="text-sm font-bold text-blue-900">{loggedUser?.sickBalance || 0} days</span>
-                </div>
-              </div>
+              <p className="text-xs font-semibold text-blue-700 mb-1">Your Leave Balance</p>
+              <p className="text-2xl font-bold text-blue-900">{loggedUser?.leaveBalance || 0} days</p>
+              <p className="text-xs text-blue-600 mt-1">💡 If balance is insufficient, select PAID leave</p>
+            </div>
+            <div className="mt-3 rounded-lg bg-amber-50 p-2 border border-amber-200">
+              <p className="text-xs text-amber-800">⚠️ Leave can be applied for dates up to 7 days in the past</p>
             </div>
             <form className="mt-4 grid gap-3" onSubmit={handleUserLeaveSubmit}>
               <div>
@@ -525,17 +531,19 @@ export default function UserDashboard() {
                   value={userLeaveForm.type}
                   onChange={(event) => setUserLeaveForm((prev) => ({ ...prev, type: event.target.value }))}
                 >
-                  <option>Casual</option>
-                  <option>Sick</option>
-                  <option>Paid</option>
+                  <option value="CASUAL">Casual Leave</option>
+                  <option value="SICK">Sick Leave</option>
+                  <option value="PAID">Paid Leave</option>
                 </select>
+                <p className="mt-1 text-xs text-ink-300">Select leave type based on your balance</p>
                 {userLeaveErrors.type && (
                   <p className="mt-1 text-xs text-red-500">{userLeaveErrors.type}</p>
                 )}
               </div>
               <div>
+                <label className="text-xs font-semibold text-ink-400">From Date</label>
                 <input
-                  className="input-field"
+                  className="input-field mt-1"
                   type="date"
                   required
                   value={userLeaveForm.from}
@@ -546,8 +554,9 @@ export default function UserDashboard() {
                 )}
               </div>
               <div>
+                <label className="text-xs font-semibold text-ink-400">To Date</label>
                 <input
-                  className="input-field"
+                  className="input-field mt-1"
                   type="date"
                   required
                   value={userLeaveForm.to}
@@ -558,15 +567,23 @@ export default function UserDashboard() {
                 )}
               </div>
               <div>
-                <input
-                  className="input-field"
-                  placeholder="Reason"
+                <label className="text-xs font-semibold text-ink-400">Reason (minimum 10 characters)</label>
+                <textarea
+                  className="input-field mt-1"
+                  placeholder="Provide detailed reason for leave..."
                   required
+                  rows="3"
                   value={userLeaveForm.reason}
                   onChange={(event) => setUserLeaveForm((prev) => ({ ...prev, reason: event.target.value }))}
                 />
+                <p className="mt-1 text-xs text-ink-300">
+                  {userLeaveForm.reason.trim().length}/10 characters minimum
+                </p>
                 {userLeaveErrors.reason && (
                   <p className="mt-1 text-xs text-red-500">{userLeaveErrors.reason}</p>
+                )}
+                {userLeaveErrors.general && (
+                  <p className="mt-1 text-xs text-red-500">{userLeaveErrors.general}</p>
                 )}
               </div>
               <button className="rounded-xl bg-ink-500 px-4 py-2 text-sm font-semibold text-white">

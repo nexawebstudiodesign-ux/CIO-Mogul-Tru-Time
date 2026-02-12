@@ -41,8 +41,60 @@ export class LeaveService {
   async applyLeave(userId: string, dto: ApplyLeaveDto) {
     const fromDate = this.normalizeDate(dto.fromDate);
     const toDate = this.normalizeDate(dto.toDate);
+    const today = this.normalizeDate(new Date().toISOString());
+    
+    // Validation 1: To date must be after from date
     if (toDate < fromDate) {
       throw new BadRequestException('To date must be after from date');
+    }
+
+    // Validation 2: Cannot apply leave for dates older than 7 days
+    const daysDifference = this.calculateDaysDifference(fromDate, today);
+    if (fromDate < today && daysDifference > 7) {
+      throw new BadRequestException('Cannot apply leave for dates older than 7 days');
+    }
+
+    // Validation 3: Check for overlapping leaves
+    const { data: existingLeaves, error: overlapError } = await this.supabaseService.client
+      .from('leaves')
+      .select('id,from_date,to_date,status')
+      .eq('user_id', userId)
+      .or(`status.eq.PENDING,status.eq.APPROVED`)
+      .gte('to_date', fromDate)
+      .lte('from_date', toDate);
+    
+    if (overlapError) {
+      throw new BadRequestException('Unable to validate leave dates');
+    }
+    
+    if (existingLeaves && existingLeaves.length > 0) {
+      throw new BadRequestException('You already have a pending or approved leave during this period');
+    }
+
+    // Validation 4: Check leave balance before allowing CASUAL or SICK leave
+    if (dto.leaveType === 'CASUAL' || dto.leaveType === 'SICK') {
+      const { data: user, error: userError } = await this.supabaseService.client
+        .from('users')
+        .select('id,leave_balance')
+        .eq('id', userId)
+        .maybeSingle();
+      
+      if (userError || !user) {
+        throw new NotFoundException('User not found');
+      }
+
+      const requestedDays = this.countDays(fromDate, toDate);
+      
+      if (user.leave_balance < requestedDays) {
+        throw new BadRequestException(
+          `Insufficient leave balance. You have ${user.leave_balance} days available but requesting ${requestedDays} days. Please apply for PAID leave instead.`
+        );
+      }
+    }
+
+    // Validation 5: Minimum reason length
+    if (dto.reason.trim().length < 10) {
+      throw new BadRequestException('Leave reason must be at least 10 characters');
     }
 
     const { data: leave, error } = await this.supabaseService.client
@@ -215,6 +267,14 @@ export class LeaveService {
     const to = new Date(toDate);
     const diff = to.getTime() - from.getTime();
     return Math.floor(diff / (1000 * 60 * 60 * 24)) + 1;
+  }
+
+  private calculateDaysDifference(date1: string, date2: string): number {
+    const d1 = new Date(date1 + 'T00:00:00Z');
+    const d2 = new Date(date2 + 'T00:00:00Z');
+    const diffTime = Math.abs(d2.getTime() - d1.getTime());
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
   }
 
   private async adjustLeaveBalance(userId: string, oldDays: number, newDays: number) {
