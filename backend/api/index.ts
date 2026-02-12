@@ -16,13 +16,10 @@ async function bootstrap() {
     if (!initPromise) {
       initPromise = (async () => {
         try {
-          // Suppress console logs during initialization
-          const originalLog = console.log;
-          console.log = () => {};
-
           const adapter = new ExpressAdapter(expressApp);
           app = await NestFactory.create(AppModule, adapter, {
             logger: false,
+            bufferLogs: true,
           });
 
           app.enableCors({
@@ -43,11 +40,10 @@ async function bootstrap() {
           );
 
           app.setGlobalPrefix('api');
-          await app.init();
-
-          // Restore console.log
-          console.log = originalLog;
-
+          
+          // Don't call app.init() - just return the app
+          // The middleware is already registered on expressApp
+          
           return app;
         } catch (error) {
           console.error('Bootstrap error:', error);
