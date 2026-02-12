@@ -4,32 +4,28 @@ import { ValidationPipe } from '@nestjs/common';
 import express, { Request, Response } from 'express';
 import { AppModule } from '../src/app.module';
 
-// Express app created at module level
-const expressApp = express();
-expressApp.use(express.json({ limit: '50mb' }));
-expressApp.use(express.urlencoded({ limit: '50mb', extended: true }));
-
-// Don't pass expressApp to adapter, let NestJS create its own
-// Then we'll get the underlying app and use it
 let nestApp: any;
-let httpApp: any;
 
 async function bootstrap() {
   if (!nestApp) {
     try {
-      // Create NestJS app with fresh Express adapter
-      // Don't pass our pre-configured expressApp to avoid middleware conflicts
-      const adapter = new ExpressAdapter();
+      // Create Express app
+      const expressInstance = express();
+      
+      // Add polyfill for app.router to prevent Express 4.x deprecation error
+      Object.defineProperty(expressInstance, 'router', {
+        get: () => undefined,
+        set: () => {},
+      });
+
+      // Add middleware BEFORE creating NestJS app
+      expressInstance.use(express.json({ limit: '50mb' }));
+      expressInstance.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+      const adapter = new ExpressAdapter(expressInstance);
       nestApp = await NestFactory.create(AppModule, adapter, {
         logger: false,
       });
-
-      // Get the underlying Express app from the adapter
-      httpApp = adapter.getInstance();
-
-      // Apply middleware to NestJS's Express app
-      httpApp.use(express.json({ limit: '50mb' }));
-      httpApp.use(express.urlencoded({ limit: '50mb', extended: true }));
 
       nestApp.enableCors({
         origin: '*',
@@ -44,15 +40,20 @@ async function bootstrap() {
       );
 
       nestApp.setGlobalPrefix('api');
-      
-      // Now call init to set up routes
+
+      // Initialize NestJS
       await nestApp.init();
+
+      return expressInstance;
     } catch (error) {
       console.error('Bootstrap error:', error);
       throw error;
     }
   }
-  return httpApp;
+  
+  // On subsequent calls, return the already initialized app
+  const adapter = nestApp.getHttpAdapter();
+  return adapter.getInstance();
 }
 
 export default async (req: Request, res: Response) => {
@@ -60,9 +61,12 @@ export default async (req: Request, res: Response) => {
     const app = await bootstrap();
     app(req, res);
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Serverless error:', error);
     if (!res.headersSent) {
-      res.status(500).json({ error: 'Internal Server Error', msg: error.message });
+      res.status(500).json({ 
+        error: 'Internal Server Error',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   }
 };
