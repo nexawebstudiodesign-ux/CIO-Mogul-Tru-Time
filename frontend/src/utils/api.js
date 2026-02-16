@@ -5,8 +5,9 @@ class ApiService {
     this.baseURL = API_URL
   }
 
+  // 🔐 Always read Supabase access_token
   getAuthHeaders() {
-    const token = localStorage.getItem('ciomogul_token')
+    const token = localStorage.getItem('access_token')
     return {
       'Content-Type': 'application/json',
       ...(token && { Authorization: `Bearer ${token}` }),
@@ -15,6 +16,7 @@ class ApiService {
 
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`
+
     const config = {
       ...options,
       headers: {
@@ -25,6 +27,13 @@ class ApiService {
 
     try {
       const response = await fetch(url, config)
+
+      // If unauthorized, auto logout
+      if (response.status === 401) {
+        this.logout()
+        throw new Error('Unauthorized')
+      }
+
       const data = await response.json()
 
       if (!response.ok) {
@@ -38,16 +47,22 @@ class ApiService {
     }
   }
 
-  // Auth endpoints
+  // ========================
+  // AUTH
+  // ========================
+
+  // (Keep only if still using backend login for users)
   async login(employeeId, password) {
     const data = await this.request('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ employeeId, password }),
     })
+
     if (data.accessToken) {
-      localStorage.setItem('ciomogul_token', data.accessToken)
+      localStorage.setItem('access_token', data.accessToken)
       localStorage.setItem('ciomogul_user', JSON.stringify(data.user))
     }
+
     return data
   }
 
@@ -58,7 +73,10 @@ class ApiService {
     })
   }
 
-  // User endpoints
+  // ========================
+  // USERS
+  // ========================
+
   async getMe() {
     return this.request('/users/me')
   }
@@ -101,7 +119,10 @@ class ApiService {
     })
   }
 
-  // Attendance endpoints
+  // ========================
+  // ATTENDANCE
+  // ========================
+
   async createAttendance(attendanceData) {
     return this.request('/attendance', {
       method: 'POST',
@@ -124,7 +145,10 @@ class ApiService {
     return this.request(`/attendance?${params}`)
   }
 
-  // Leave endpoints
+  // ========================
+  // LEAVE
+  // ========================
+
   async applyLeave(leaveData) {
     return this.request('/leave', {
       method: 'POST',
@@ -173,7 +197,10 @@ class ApiService {
     })
   }
 
-  // Salary endpoints
+  // ========================
+  // SALARY
+  // ========================
+
   async createSalary(salaryData) {
     return this.request('/salary', {
       method: 'POST',
@@ -205,8 +232,12 @@ class ApiService {
     })
   }
 
+  // ========================
+  // LOGOUT
+  // ========================
+
   logout() {
-    localStorage.removeItem('ciomogul_token')
+    localStorage.removeItem('access_token')
     localStorage.removeItem('ciomogul_user')
     localStorage.removeItem('ciomogul_user_id')
   }
