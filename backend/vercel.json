@@ -1,13 +1,25 @@
+// {
+//   "version": 2,
+//   "buildCommand": "npm run build",
+//   "outputDirectory": "dist",
+//   "routes": [
+//     {
+//       "src": "/(.*)",
+//       "dest": "/api/index.ts"
+//     }
+//   ],
+//   "functions": {
+//     "api/index.ts": {
+//       "memory": 1024,
+//       "maxDuration": 10
+//     }
+//   }
+// }
+
+
+
 {
   "version": 2,
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/api/index.ts"
-    }
-  ],
   "functions": {
     "api/index.ts": {
       "memory": 1024,
@@ -15,4 +27,3 @@
     }
   }
 }
-
