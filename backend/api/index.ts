@@ -24,7 +24,18 @@ async function createApp() {
       abortOnError: false,
     });
 
-    nestApp.enableCors({ origin: '*', credentials: true });
+    // nestApp.enableCors({ origin: '*', credentials: true });
+
+    nestApp.enableCors({
+      origin: [
+        'http://localhost:5173',
+        'https://cio-mogul-tru-time-e47w.vercel.app'
+      ],
+      credentials: true,
+    });
+    
+
+
     nestApp.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
     nestApp.setGlobalPrefix('api');
 
