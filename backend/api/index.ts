@@ -29,7 +29,8 @@ async function createApp() {
     nestApp.setGlobalPrefix('api');
 
     // Don't call init() - routes are already registered
-    // await nestApp.init(); 
+    // well its needed for serverless express to work
+    await nestApp.init(); 
     
     return expressApp;
   } finally {
