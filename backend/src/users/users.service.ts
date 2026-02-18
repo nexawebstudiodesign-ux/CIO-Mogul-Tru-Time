@@ -34,6 +34,8 @@ export class UsersService {
     if (authError || !authUser.user) {
       throw new BadRequestException('Unable to create user credentials');
     }
+    const casualBalance = dto.casualBalance ?? dto.leaveBalance ?? 12;
+    const sickBalance = dto.sickBalance ?? dto.leaveBalance ?? 12;
     const { data: user, error: createError } = await this.supabaseService.client
       .from('users')
       .insert({
@@ -43,10 +45,11 @@ export class UsersService {
         employee_id: employeeId,
         password_hash: passwordHash,
         role: 'USER',
-        leave_balance: dto.leaveBalance ?? 0,
+        casual_balance: casualBalance,
+        sick_balance: sickBalance,
         is_active: true,
       })
-      .select('id,name,email,employee_id,role,leave_balance,is_active,created_at')
+      .select('id,name,email,employee_id,role,casual_balance,sick_balance,is_active,created_at')
       .single();
     if (createError || !user) {
       await this.supabaseService.client.auth.admin.deleteUser(authUser.user.id);
@@ -58,7 +61,8 @@ export class UsersService {
       email: user.email,
       employeeId: user.employee_id,
       role: user.role,
-      leaveBalance: user.leave_balance,
+      casualBalance: user.casual_balance,
+      sickBalance: user.sick_balance,
       isActive: user.is_active,
       createdAt: user.created_at,
     };
@@ -67,7 +71,7 @@ export class UsersService {
   async listUsers() {
     const { data, error } = await this.supabaseService.client
       .from('users')
-      .select('id,name,email,employee_id,role,leave_balance,is_active,created_at')
+      .select('id,name,email,employee_id,role,casual_balance,sick_balance,is_active,created_at')
       .order('created_at', { ascending: false });
     if (error) {
       throw new BadRequestException('Unable to load users');
@@ -78,7 +82,8 @@ export class UsersService {
       email: user.email,
       employeeId: user.employee_id,
       role: user.role,
-      leaveBalance: user.leave_balance,
+      casualBalance: user.casual_balance,
+      sickBalance: user.sick_balance,
       isActive: user.is_active,
       createdAt: user.created_at,
     }));
@@ -113,15 +118,18 @@ export class UsersService {
         throw new BadRequestException('Unable to update auth email');
       }
     }
+    const updatePayload: Record<string, unknown> = {
+      name: dto.name ?? user.name,
+      email: dto.email ?? user.email,
+      is_active: dto.isActive ?? user.is_active,
+    };
+    if (dto.casualBalance !== undefined) updatePayload.casual_balance = dto.casualBalance;
+    if (dto.sickBalance !== undefined) updatePayload.sick_balance = dto.sickBalance;
     const { data: updated, error: updateError } = await this.supabaseService.client
       .from('users')
-      .update({
-        name: dto.name ?? user.name,
-        email: dto.email ?? user.email,
-        is_active: dto.isActive ?? user.is_active,
-      })
+      .update(updatePayload)
       .eq('id', userId)
-      .select('id,name,email,employee_id,role,leave_balance,is_active,created_at')
+      .select('id,name,email,employee_id,role,casual_balance,sick_balance,is_active,created_at')
       .single();
     if (updateError || !updated) {
       throw new BadRequestException('Unable to update user');
@@ -132,7 +140,8 @@ export class UsersService {
       email: updated.email,
       employeeId: updated.employee_id,
       role: updated.role,
-      leaveBalance: updated.leave_balance,
+      casualBalance: updated.casual_balance,
+      sickBalance: updated.sick_balance,
       isActive: updated.is_active,
       createdAt: updated.created_at,
     };
@@ -147,11 +156,21 @@ export class UsersService {
     if (userError || !user) {
       throw new NotFoundException('User not found');
     }
+    const updatePayload: Record<string, number> = {};
+    if (dto.casualBalance !== undefined) updatePayload.casual_balance = dto.casualBalance;
+    if (dto.sickBalance !== undefined) updatePayload.sick_balance = dto.sickBalance;
+    if (dto.leaveBalance !== undefined && Object.keys(updatePayload).length === 0) {
+      updatePayload.casual_balance = dto.leaveBalance;
+      updatePayload.sick_balance = dto.leaveBalance;
+    }
+    if (Object.keys(updatePayload).length === 0) {
+      throw new BadRequestException('Provide at least casualBalance, sickBalance, or leaveBalance');
+    }
     const { data: updated, error: updateError } = await this.supabaseService.client
       .from('users')
-      .update({ leave_balance: dto.leaveBalance })
+      .update(updatePayload)
       .eq('id', userId)
-      .select('id,name,email,employee_id,role,leave_balance,is_active')
+      .select('id,name,email,employee_id,role,casual_balance,sick_balance,is_active')
       .single();
     if (updateError || !updated) {
       throw new BadRequestException('Unable to update leave balance');
@@ -162,7 +181,8 @@ export class UsersService {
       email: updated.email,
       employeeId: updated.employee_id,
       role: updated.role,
-      leaveBalance: updated.leave_balance,
+      casualBalance: updated.casual_balance,
+      sickBalance: updated.sick_balance,
       isActive: updated.is_active,
     };
   }
@@ -217,7 +237,7 @@ export class UsersService {
   async getMe(userId: string) {
     const { data: user, error } = await this.supabaseService.client
       .from('users')
-      .select('id,name,email,employee_id,role,leave_balance,is_active')
+      .select('id,name,email,employee_id,role,casual_balance,sick_balance,is_active')
       .eq('id', userId)
       .maybeSingle();
     if (error || !user) {
@@ -229,7 +249,9 @@ export class UsersService {
       email: user.email,
       employeeId: user.employee_id,
       role: user.role,
-      leaveBalance: user.leave_balance,
+      casualBalance: user.casual_balance,
+      sickBalance: user.sick_balance,
+      leaveBalance: user.casual_balance, // backward compat for UserDashboard
       isActive: user.is_active,
     };
   }

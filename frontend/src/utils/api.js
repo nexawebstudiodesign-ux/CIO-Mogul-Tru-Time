@@ -34,7 +34,14 @@ class ApiService {
         throw new Error('Unauthorized')
       }
 
-      const data = await response.json()
+      let data
+      try {
+        const contentType = response.headers.get('content-type')
+        const isJson = contentType && contentType.includes('application/json')
+        data = isJson ? await response.json() : { message: (await response.text()) || 'Request failed' }
+      } catch (_) {
+        data = { message: 'Invalid response from server' }
+      }
 
       if (!response.ok) {
         throw new Error(data.message || 'API request failed')
@@ -42,6 +49,10 @@ class ApiService {
 
       return data
     } catch (error) {
+      if (error.name === 'TypeError' && (error.message === 'Failed to fetch' || error.cause?.code === 'ECONNREFUSED')) {
+        console.error('API Error: cannot reach server', error)
+        throw new Error(`Cannot reach server. Is the backend running at ${this.baseURL}?`)
+      }
       console.error('API Error:', error)
       throw error
     }

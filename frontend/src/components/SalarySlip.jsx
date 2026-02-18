@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useApp } from '../context/AppContext'
+import { useApp } from '../context/useApp'
 
 export default function SalarySlip() {
   const { loggedUser, loggedUserId, attendance, monthlySalaries, currentMonth } = useApp()

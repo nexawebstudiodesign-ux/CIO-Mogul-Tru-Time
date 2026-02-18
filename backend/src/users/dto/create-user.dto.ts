@@ -16,4 +16,14 @@ export class CreateUserDto {
   @IsInt()
   @Min(0)
   leaveBalance?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  casualBalance?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  sickBalance?: number;
 }

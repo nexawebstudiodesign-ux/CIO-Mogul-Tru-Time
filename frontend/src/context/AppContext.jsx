@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useMemo, useEffect } from 'react'
+import { createContext, useState, useMemo, useEffect } from 'react'
 import { apiService } from '../utils/api'
 import {
   currentMonth,
@@ -8,7 +8,7 @@ import {
   initialMonthlySalaries,
 } from '../data/initialData'
 
-const AppContext = createContext(null)
+export const AppContext = createContext(null)
 
 export function AppProvider({ children }) {
   const [users, setUsers] = useState(initialUsers)
@@ -19,37 +19,48 @@ export function AppProvider({ children }) {
   const [selectedUserId, setSelectedUserId] = useState(initialUsers[0]?.id ?? '')
   const [selectedLeaveId, setSelectedLeaveId] = useState(initialLeaves[0]?.id ?? '')
 
-  // Admin auth
-  const [isAdminAuthorized, setIsAdminAuthorized] = useState(
-    localStorage.getItem('ciomogul_admin_ok') === 'true',
-  )
-
-  // User auth - initialize from localStorage
+  // User auth - initialize from localStorage (access_token + ciomogul_user)
   const [loggedUserId, setLoggedUserId] = useState(localStorage.getItem('ciomogul_user_id') || '')
   const [loggedUser, setLoggedUser] = useState(() => {
     const stored = localStorage.getItem('ciomogul_user')
     return stored ? JSON.parse(stored) : null
   })
 
-  // Fetch logged-in user data on mount if token exists
-  useEffect(() => {
-    const token = localStorage.getItem('ciomogul_token')
-    const userId = localStorage.getItem('ciomogul_user_id')
-    
-    if (token && userId && !loggedUser) {
-      apiService.getMe()
-        .then(userData => {
-          setLoggedUser(userData)
-          localStorage.setItem('ciomogul_user', JSON.stringify(userData))
-        })
-        .catch(err => {
-          console.error('Failed to fetch user data:', err)
-          // Clear invalid session
-          localStorage.removeItem('ciomogul_token')
-          localStorage.removeItem('ciomogul_user_id')
-          localStorage.removeItem('ciomogul_user')
-        })
+  // Admin auth: derived from token + user role (Supabase token system only)
+  const [isAdminAuthorized, setIsAdminAuthorized] = useState(() => {
+    const stored = localStorage.getItem('ciomogul_user')
+    if (!stored) return false
+    try {
+      const user = JSON.parse(stored)
+      return user?.role === 'ADMIN'
+    } catch {
+      return false
     }
+  })
+
+  // Validate session and sync user/role when access_token exists
+  useEffect(() => {
+    const token = localStorage.getItem('access_token')
+    if (!token) return
+
+    apiService
+      .getMe()
+      .then((userData) => {
+        setLoggedUser(userData)
+        setLoggedUserId(userData.id ?? '')
+        localStorage.setItem('ciomogul_user', JSON.stringify(userData))
+        localStorage.setItem('ciomogul_user_id', userData.id ?? '')
+        setIsAdminAuthorized(userData.role === 'ADMIN')
+      })
+      .catch((err) => {
+        console.error('Failed to validate session:', err)
+        localStorage.removeItem('access_token')
+        localStorage.removeItem('ciomogul_user')
+        localStorage.removeItem('ciomogul_user_id')
+        setLoggedUser(null)
+        setLoggedUserId('')
+        setIsAdminAuthorized(false)
+      })
   }, [])
 
   // Computed data
@@ -109,12 +120,4 @@ export function AppProvider({ children }) {
   }
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>
-}
-
-export function useApp() {
-  const context = useContext(AppContext)
-  if (!context) {
-    throw new Error('useApp must be used within AppProvider')
-  }
-  return context
 }

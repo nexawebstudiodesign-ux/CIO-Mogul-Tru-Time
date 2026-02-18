@@ -17,7 +17,7 @@ export class LeaveService {
     }
 
     if (dto.status === 'APPROVED') {
-      await this.adjustLeaveBalance(dto.userId, 0, this.countDays(fromDate, toDate));
+      await this.adjustLeaveBalance(dto.userId, 0, this.countDays(fromDate, toDate), dto.leaveType);
     }
 
     const { data: leave, error } = await this.supabaseService.client
@@ -89,7 +89,7 @@ export class LeaveService {
     if (dto.leaveType === 'CASUAL' || dto.leaveType === 'SICK') {
       const { data: user, error: userError } = await this.supabaseService.client
         .from('users')
-        .select('id,leave_balance')
+        .select('id,casual_balance,sick_balance')
         .eq('id', userId)
         .maybeSingle();
       
@@ -98,17 +98,19 @@ export class LeaveService {
       }
 
       const requestedDays = this.countDays(fromDate, toDate);
-      
-      if (user.leave_balance < requestedDays) {
+      const balance = dto.leaveType === 'CASUAL' ? user.casual_balance : user.sick_balance;
+      if (balance < requestedDays) {
         throw new BadRequestException(
-          `Insufficient leave balance. You have ${user.leave_balance} days available but requesting ${requestedDays} days. Please apply for PAID leave instead, or kindly contact Admin at info@theciomogul.com for assistance.`
+          `Insufficient leave balance. You have ${balance} days available but requesting ${requestedDays} days. Please apply for PAID leave instead, or kindly contact Admin at info@theciomogul.com for assistance.`
         );
       }
 
-      // Deduct balance immediately when applying
+      const updatePayload = dto.leaveType === 'CASUAL'
+        ? { casual_balance: user.casual_balance - requestedDays }
+        : { sick_balance: user.sick_balance - requestedDays };
       const { error: updateError } = await this.supabaseService.client
         .from('users')
-        .update({ leave_balance: user.leave_balance - requestedDays })
+        .update(updatePayload)
         .eq('id', userId);
       
       if (updateError) {
@@ -154,7 +156,7 @@ export class LeaveService {
   async listAllLeaves(status?: string) {
     let request = this.supabaseService.client
       .from('leaves')
-      .select('id,user_id,leave_type,from_date,to_date,reason,status,created_at,users(id,name,employee_id,leave_balance)')
+      .select('id,user_id,leave_type,from_date,to_date,reason,status,created_at,users(id,name,employee_id,casual_balance,sick_balance)')
       .order('created_at', { ascending: false });
     if (status) {
       request = request.eq('status', status);
@@ -185,16 +187,18 @@ export class LeaveService {
       const days = this.countDays(leave.from_date, leave.to_date);
       const { data: user, error: userError } = await this.supabaseService.client
         .from('users')
-        .select('id,leave_balance')
+        .select('id,casual_balance,sick_balance')
         .eq('id', leave.user_id)
         .maybeSingle();
       if (userError || !user) {
         throw new NotFoundException('User not found');
       }
-      // Restore the balance that was deducted at application time
+      const updatePayload = leave.leave_type === 'CASUAL'
+        ? { casual_balance: user.casual_balance + days }
+        : { sick_balance: user.sick_balance + days };
       const { error: updateBalanceError } = await this.supabaseService.client
         .from('users')
-        .update({ leave_balance: user.leave_balance + days })
+        .update(updatePayload)
         .eq('id', user.id);
       if (updateBalanceError) {
         throw new BadRequestException('Unable to restore leave balance');
@@ -244,7 +248,7 @@ export class LeaveService {
       const days = this.countDays(leave.from_date, leave.to_date);
       const { data: user, error: userError } = await this.supabaseService.client
         .from('users')
-        .select('id,leave_balance')
+        .select('id,casual_balance,sick_balance')
         .eq('id', userId)
         .maybeSingle();
       
@@ -252,9 +256,12 @@ export class LeaveService {
         throw new NotFoundException('User not found');
       }
 
+      const updatePayload = leave.leave_type === 'CASUAL'
+        ? { casual_balance: user.casual_balance + days }
+        : { sick_balance: user.sick_balance + days };
       const { error: updateBalanceError } = await this.supabaseService.client
         .from('users')
-        .update({ leave_balance: user.leave_balance + days })
+        .update(updatePayload)
         .eq('id', userId);
       
       if (updateBalanceError) {
@@ -296,7 +303,7 @@ export class LeaveService {
     const newDays = newStatus === 'APPROVED' ? this.countDays(newFrom, newTo) : 0;
 
     if (oldDays !== newDays) {
-      await this.adjustLeaveBalance(existing.user_id, oldDays, newDays);
+      await this.adjustLeaveBalance(existing.user_id, oldDays, newDays, existing.leave_type);
     }
 
     const { data: updated, error: updateError } = await this.supabaseService.client
@@ -320,7 +327,7 @@ export class LeaveService {
   async adminDeleteLeave(leaveId: string) {
     const { data: existing, error: existingError } = await this.supabaseService.client
       .from('leaves')
-      .select('id,user_id,from_date,to_date,status')
+      .select('id,user_id,leave_type,from_date,to_date,status')
       .eq('id', leaveId)
       .maybeSingle();
     if (existingError || !existing) {
@@ -329,7 +336,7 @@ export class LeaveService {
 
     if (existing.status === 'APPROVED') {
       const days = this.countDays(existing.from_date, existing.to_date);
-      await this.adjustLeaveBalance(existing.user_id, days, 0);
+      await this.adjustLeaveBalance(existing.user_id, days, 0, existing.leave_type);
     }
 
     const { error: deleteError } = await this.supabaseService.client
@@ -363,26 +370,30 @@ export class LeaveService {
     return diffDays;
   }
 
-  private async adjustLeaveBalance(userId: string, oldDays: number, newDays: number) {
+  private async adjustLeaveBalance(userId: string, oldDays: number, newDays: number, leaveType: string) {
     const delta = newDays - oldDays;
     if (delta === 0) {
       return;
     }
     const { data: user, error: userError } = await this.supabaseService.client
       .from('users')
-      .select('id,leave_balance')
+      .select('id,casual_balance,sick_balance')
       .eq('id', userId)
       .maybeSingle();
     if (userError || !user) {
       throw new NotFoundException('User not found');
     }
-    const newBalance = user.leave_balance - delta;
+    const balance = leaveType === 'CASUAL' ? user.casual_balance : user.sick_balance;
+    const newBalance = balance - delta;
     if (newBalance < 0) {
       throw new BadRequestException('Insufficient leave balance');
     }
+    const updatePayload = leaveType === 'CASUAL'
+      ? { casual_balance: newBalance }
+      : { sick_balance: newBalance };
     const { error: updateError } = await this.supabaseService.client
       .from('users')
-      .update({ leave_balance: newBalance })
+      .update(updatePayload)
       .eq('id', user.id);
     if (updateError) {
       throw new BadRequestException('Unable to update leave balance');
