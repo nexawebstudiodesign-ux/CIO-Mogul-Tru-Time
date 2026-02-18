@@ -15,7 +15,7 @@ export class AuthService {
   async login(dto: LoginDto) {
     const { data: user, error } = await this.supabaseService.client
       .from('users')
-      .select('*')
+      .select('id,name,email,employee_id,role,casual_balance,sick_balance,is_active')
       .eq('employee_id', dto.employeeId)
       .maybeSingle();
     if (error || !user || !user.is_active) {
@@ -40,7 +40,9 @@ export class AuthService {
         email: user.email,
         employeeId: user.employee_id,
         role: user.role,
-        leaveBalance: user.leave_balance,
+        casualBalance: user.casual_balance,
+        sickBalance: user.sick_balance,
+        leaveBalance: user.casual_balance, // backward compat for UserDashboard
       },
     };
   }
@@ -102,7 +104,8 @@ export class AuthService {
         employee_id: dto.employeeId,
         password_hash: passwordHash,
         role: 'ADMIN',
-        leave_balance: 0,
+        casual_balance: 12,
+        sick_balance: 12,
         is_active: true,
       })
       .select('id,name,email,employee_id,role')

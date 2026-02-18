@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useApp } from '../context/AppContext'
+import { useApp } from '../context/useApp'
 import { apiService } from '../utils/api'
 import {
-  getNextEmployeeId,
   getNextLeaveId,
   getNextSalaryId,
   clampBalance,
@@ -23,6 +22,7 @@ export default function AdminDashboard() {
     setMonthlySalaries,
     selectedMonth,
     setSelectedMonth,
+    setIsAdminAuthorized,
   } = useApp()
 
   const [selectedUserId, setSelectedUserId] = useState(users[0]?.id ?? '')
@@ -470,15 +470,12 @@ export default function AdminDashboard() {
 
     try {
       if (modalMode === 'add') {
-        const employeeId = getNextEmployeeId(users)
         const userData = {
           name: `${userForm.firstName.trim()} ${userForm.lastName.trim()}`,
           email: userForm.email.trim(),
-          employeeId: employeeId,
           password: userForm.password,
           casualBalance: clampBalance(Number(userForm.casualBalance || 0)),
           sickBalance: clampBalance(Number(userForm.sickBalance || 0)),
-          role: 'user',
         }
         const newUser = await apiService.createUser(userData)
         setUsers((prev) => [newUser, ...prev])
@@ -721,7 +718,7 @@ export default function AdminDashboard() {
               <button
                 onClick={() => {
                   apiService.logout()
-                  localStorage.removeItem('ciomogul_admin_ok')
+                  setIsAdminAuthorized(false)
                   navigate('/')
                 }}
                 className="rounded-xl bg-red-500 hover:bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow"
@@ -786,11 +783,13 @@ export default function AdminDashboard() {
                 <span>Actions</span>
               </div>
               {monthSummary.map((user) => (
-                <button
-                  type="button"
+                <div
                   key={user.id}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => setSelectedUserId(user.id)}
-                  className={`grid w-full grid-cols-[1.2fr_0.7fr_0.7fr_0.7fr_0.6fr_0.6fr_0.6fr_0.9fr] items-center border-t px-4 py-3 text-left text-sm transition ${
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedUserId(user.id) } }}
+                  className={`grid w-full grid-cols-[1.2fr_0.7fr_0.7fr_0.7fr_0.6fr_0.6fr_0.6fr_0.9fr] items-center border-t px-4 py-3 text-left text-sm transition cursor-pointer ${
                     selectedUserId === user.id 
                       ? 'bg-brand-100 border-brand-300 border-l-4 border-l-brand-600' 
                       : 'border-sand-100 hover:bg-sand-50/80'
@@ -830,7 +829,7 @@ export default function AdminDashboard() {
                       Delete
                     </button>
                   </span>
-                </button>
+                </div>
               ))}
             </div>
             <div className="mt-4 flex flex-wrap gap-3">
