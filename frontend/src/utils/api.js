@@ -256,6 +256,42 @@ class ApiService {
   }
 
   // ========================
+  // REPORTS
+  // ========================
+
+  async getMonthlySummaryReport(month) {
+    const params = new URLSearchParams()
+    if (month) params.append('month', month)
+    return this.request(`/reports/monthly-summary?${params}`)
+  }
+
+  async downloadMonthlySummaryReportCsv(month) {
+    const params = new URLSearchParams()
+    if (month) params.append('month', month)
+    const url = `${this.baseURL}/reports/monthly-summary/csv?${params}`
+    const response = await fetch(url, {
+      headers: this.getAuthHeaders(),
+    })
+    if (!response.ok) {
+      throw new Error('Failed to download report')
+    }
+    const blob = await response.blob()
+    const objectUrl = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = objectUrl
+    link.download = `monthly-report-${month}.csv`
+    link.click()
+    window.URL.revokeObjectURL(objectUrl)
+  }
+
+  async emailMonthlySummaryReport(month, to) {
+    return this.request('/reports/monthly-summary/email', {
+      method: 'POST',
+      body: JSON.stringify({ month, to }),
+    })
+  }
+
+  // ========================
   // LOGOUT
   // ========================
 

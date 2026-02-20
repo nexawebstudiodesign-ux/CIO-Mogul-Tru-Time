@@ -63,7 +63,17 @@ export default function SalarySlip() {
       <style>{`
         @media print {
           @page { 
-            margin: 0.25in 0.4in; 
+            size: A4 portrait;
+            margin: 10mm;
+          }
+          .salary-slip-page {
+            width: 100% !important;
+            min-height: auto !important;
+            margin: 0 !important;
+            border: 0 !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            background: white !important;
             size: A4 portrait;
           }
           .no-print { display: none !important; }
@@ -80,23 +90,24 @@ export default function SalarySlip() {
           }
           .salary-slip-container { 
             box-shadow: none !important; 
-            padding: 8px 16px !important;
+            padding: 10px 14px !important;
             margin: 0 !important;
             border-radius: 0 !important;
             page-break-inside: avoid;
             break-inside: avoid;
             display: block !important;
           }
+          .slip-section { margin-top: 10px !important; }
           .print-reduce { 
+            margin-top: 10px !important; 
+            margin-bottom: 10px !important; 
+          }
+          .print-reduce-sm { 
             margin-top: 8px !important; 
             margin-bottom: 8px !important; 
           }
-          .print-reduce-sm { 
-            margin-top: 6px !important; 
-            margin-bottom: 6px !important; 
-          }
-          .print-text { font-size: 10px !important; line-height: 1.3 !important; }
-          .print-heading { font-size: 14px !important; line-height: 1.2 !important; }
+          .print-text { font-size: 10.5px !important; line-height: 1.4 !important; }
+          .print-heading { font-size: 15px !important; line-height: 1.25 !important; }
           .font-signature { 
             font-family: 'Brush Script MT', cursive; 
             font-size: 20px !important;
@@ -107,6 +118,15 @@ export default function SalarySlip() {
         .font-signature { 
           font-family: 'Brush Script MT', 'Lucida Handwriting', cursive; 
           font-style: italic;
+        }
+        .salary-slip-page {
+          width: 210mm;
+          min-height: 297mm;
+          margin: 0 auto;
+          background: white;
+          border: 1px solid rgba(226, 216, 198, 0.7);
+          border-radius: 16px;
+          overflow: hidden;
         }
       `}</style>
       <div className="min-h-screen p-6 md:p-10">
@@ -156,7 +176,8 @@ export default function SalarySlip() {
               </div>
             </div>
           ) : (
-            <div className="salary-slip-container glass-panel rounded-3xl p-8 shadow-lift">
+            <div className="salary-slip-page">
+            <div className="salary-slip-container p-8 md:p-10">
               <div className="border-b border-sand-200 pb-3 print-reduce-sm">
                 <div className="text-center mb-3">
                   <h2 className="text-lg font-bold text-brand-600 print-heading">
@@ -180,13 +201,13 @@ export default function SalarySlip() {
                   <div className="text-right">
                     <p className="text-[10px] text-ink-300">Employee Details</p>
                     <p className="font-semibold text-xs mt-0.5">{loggedUser.name}</p>
-                    <p className="text-ink-300 text-[10px]">{loggedUser.id}</p>
+                    <p className="text-ink-300 text-[10px]">{loggedUser.employeeId || loggedUser.id}</p>
                     <p className="text-ink-300 text-[10px]">{loggedUser.email}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="mt-3 rounded-xl border border-sand-200 overflow-hidden print-reduce-sm">
+              <div className="slip-section rounded-xl border border-sand-200 overflow-hidden print-reduce-sm">
                 <div className="bg-sand-50 px-3 py-1">
                   <h3 className="text-xs font-semibold text-ink-500 print-text">Salary Details</h3>
                 </div>
@@ -218,7 +239,7 @@ export default function SalarySlip() {
                 </div>
               </div>
 
-              <div className="mt-4 grid gap-4 md:grid-cols-2 print-reduce">
+              <div className="slip-section grid gap-4 md:grid-cols-2 print-reduce">
                 <div>
                   <h2 className="text-sm font-bold text-ink-500 print-text">Earnings</h2>
                   <div className="mt-2 space-y-1.5">
@@ -292,7 +313,7 @@ export default function SalarySlip() {
                 </div>
               </div>
 
-              <div className="mt-4 rounded-xl bg-brand-50 p-3 print-reduce-sm">
+              <div className="slip-section rounded-xl bg-brand-50 p-3 print-reduce-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-bold text-ink-500 print-text">Net Salary</span>
                   <span className="text-lg font-bold text-brand-600 print-heading">
@@ -301,7 +322,7 @@ export default function SalarySlip() {
                 </div>
               </div>
 
-              <div className="mt-3 border-t border-sand-200 pt-3 print-reduce-sm">
+              <div className="slip-section border-t border-sand-200 pt-3 print-reduce-sm">
                 <div className="flex justify-end mb-2">
                   <div className="text-center">
                     <div className="mb-1 text-xs font-bold text-brand-600 print-text">
@@ -331,6 +352,7 @@ export default function SalarySlip() {
                   </p>
                 </div>
               </div>
+            </div>
             </div>
           )}
         </div>

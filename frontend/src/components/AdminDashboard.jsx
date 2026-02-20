@@ -68,6 +68,13 @@ export default function AdminDashboard() {
   const [salaryFormErrors, setSalaryFormErrors] = useState({})
   const [userSearch, setUserSearch] = useState('')
   const [leaveStatusFilter, setLeaveStatusFilter] = useState('All')
+  const [leaveSearch, setLeaveSearch] = useState('')
+  const [attendanceSearch, setAttendanceSearch] = useState('')
+  const [attendanceStatusFilter, setAttendanceStatusFilter] = useState('All')
+  const [salarySearch, setSalarySearch] = useState('')
+  const [reportEmail, setReportEmail] = useState('')
+  const [reportBusy, setReportBusy] = useState(false)
+  const [reportMessage, setReportMessage] = useState('')
   const [savedPasswords, setSavedPasswords] = useState(() => {
     try {
       const raw = localStorage.getItem('ciomogul_user_passwords')
@@ -296,6 +303,54 @@ export default function AdminDashboard() {
     if (leaveStatusFilter === 'All') return userLeaves
     return userLeaves.filter((leave) => leave.status === leaveStatusFilter)
   }, [userLeaves, leaveStatusFilter])
+
+  const globalAttendanceRows = useMemo(() => {
+    const search = attendanceSearch.trim().toLowerCase()
+    return filteredAttendance.filter((record) => {
+      const user = users.find((item) => item.id === record.userId)
+      const employeeId = String(user?.employeeId ?? '').toLowerCase()
+      const name = String(user?.name ?? '').toLowerCase()
+      const status = record.hours >= 9 ? 'Compliant' : 'Non-compliant'
+
+      const searchPass =
+        !search ||
+        employeeId.includes(search) ||
+        name.includes(search) ||
+        String(record.date ?? '').toLowerCase().includes(search)
+      const statusPass = attendanceStatusFilter === 'All' || attendanceStatusFilter === status
+
+      return searchPass && statusPass
+    })
+  }, [filteredAttendance, users, attendanceSearch, attendanceStatusFilter])
+
+  const globalLeaveRows = useMemo(() => {
+    const search = leaveSearch.trim().toLowerCase()
+    return filteredLeaves.filter((leave) => {
+      const user = users.find((item) => item.id === leave.userId)
+      const employeeId = String(user?.employeeId ?? '').toLowerCase()
+      const name = String(user?.name ?? leave?.name ?? '').toLowerCase()
+
+      const searchPass =
+        !search ||
+        employeeId.includes(search) ||
+        name.includes(search) ||
+        String(leave.type ?? '').toLowerCase().includes(search)
+
+      const statusPass = leaveStatusFilter === 'All' || leave.status === leaveStatusFilter
+      return searchPass && statusPass
+    })
+  }, [filteredLeaves, users, leaveSearch, leaveStatusFilter])
+
+  const globalSalaryRows = useMemo(() => {
+    const search = salarySearch.trim().toLowerCase()
+    return monthlySalaries.filter((salary) => {
+      if (salary.month !== selectedMonth) return false
+      const user = users.find((item) => item.id === salary.userId)
+      const employeeId = String(user?.employeeId ?? '').toLowerCase()
+      const name = String(user?.name ?? '').toLowerCase()
+      return !search || employeeId.includes(search) || name.includes(search)
+    })
+  }, [monthlySalaries, selectedMonth, users, salarySearch])
 
   const selectedUser = users.find((user) => user.id === selectedUserId)
 
@@ -811,6 +866,36 @@ export default function AdminDashboard() {
     }
   }
 
+  const handleDownloadMonthlyReport = async () => {
+    try {
+      setReportBusy(true)
+      setReportMessage('')
+      await apiService.downloadMonthlySummaryReportCsv(selectedMonth)
+      setReportMessage('Monthly report downloaded.')
+    } catch (error) {
+      setReportMessage(error.message || 'Failed to download monthly report')
+    } finally {
+      setReportBusy(false)
+    }
+  }
+
+  const handleEmailMonthlyReport = async () => {
+    if (!reportEmail.trim()) {
+      setReportMessage('Enter email address first')
+      return
+    }
+    try {
+      setReportBusy(true)
+      setReportMessage('')
+      await apiService.emailMonthlySummaryReport(selectedMonth, reportEmail.trim())
+      setReportMessage(`Report sent to ${reportEmail.trim()}`)
+    } catch (error) {
+      setReportMessage(error.message || 'Failed to send report email')
+    } finally {
+      setReportBusy(false)
+    }
+  }
+
   return (
     <div className="min-h-screen p-6 md:p-10">
       {isLoading ? (
@@ -1078,6 +1163,37 @@ export default function AdminDashboard() {
             </div>
 
             <div className="mt-6">
+              <div className="rounded-2xl border border-sand-200 p-4 mb-6 bg-white/70">
+                <h3 className="text-sm font-semibold text-ink-500">Monthly Reports</h3>
+                <p className="text-xs text-ink-300 mt-1">Compliance + payroll summary for selected month</p>
+                <div className="mt-3 flex flex-col gap-2">
+                  <button
+                    className="rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                    onClick={handleDownloadMonthlyReport}
+                    disabled={reportBusy}
+                  >
+                    Download Monthly Summary CSV
+                  </button>
+                  <div className="flex gap-2">
+                    <input
+                      type="email"
+                      value={reportEmail}
+                      onChange={(event) => setReportEmail(event.target.value)}
+                      placeholder="report email"
+                      className="flex-1 rounded-lg border border-sand-200 bg-white px-3 py-2 text-xs text-ink-500"
+                    />
+                    <button
+                      className="rounded-lg border border-sand-200 bg-white px-3 py-2 text-xs font-semibold text-ink-500 disabled:opacity-50"
+                      onClick={handleEmailMonthlyReport}
+                      disabled={reportBusy}
+                    >
+                      Email
+                    </button>
+                  </div>
+                  {reportMessage && <p className="text-xs text-ink-400">{reportMessage}</p>}
+                </div>
+              </div>
+
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-ink-500">Tru Time Records</h3>
                 <button
@@ -1086,6 +1202,24 @@ export default function AdminDashboard() {
                 >
                   Export CSV
                 </button>
+              </div>
+              <div className="mt-3 flex gap-2">
+                <input
+                  type="text"
+                  value={attendanceSearch}
+                  onChange={(event) => setAttendanceSearch(event.target.value)}
+                  placeholder="Search by employee ID/name/date"
+                  className="flex-1 rounded-lg border border-sand-200 bg-white px-3 py-1 text-xs text-ink-500"
+                />
+                <select
+                  className="rounded-lg border border-sand-200 bg-white px-2 py-1 text-xs font-semibold text-ink-500"
+                  value={attendanceStatusFilter}
+                  onChange={(event) => setAttendanceStatusFilter(event.target.value)}
+                >
+                  <option value="All">All Status</option>
+                  <option value="Compliant">Compliant</option>
+                  <option value="Non-compliant">Non-compliant</option>
+                </select>
               </div>
               <div className="mt-3 overflow-hidden rounded-2xl border border-sand-200">
                 <div className="grid grid-cols-[0.9fr_0.6fr_0.7fr_0.7fr_0.7fr_0.7fr] bg-sand-50 px-4 py-3 text-xs uppercase tracking-[0.2em] text-ink-300">
@@ -1113,12 +1247,20 @@ export default function AdminDashboard() {
                   <div className="px-4 py-6 text-sm text-ink-300">No Tru Time records for this month.</div>
                 )}
               </div>
+              <p className="mt-2 text-xs text-ink-300">Global matches this month: {globalAttendanceRows.length}</p>
             </div>
 
             <div className="mt-6">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-ink-500">Leaves</h3>
                 <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={leaveSearch}
+                    onChange={(event) => setLeaveSearch(event.target.value)}
+                    placeholder="Search by employee ID/name/type"
+                    className="rounded-lg border border-sand-200 bg-white px-2 py-1 text-xs text-ink-500"
+                  />
                   <select
                     className="rounded-lg border border-sand-200 bg-white px-2 py-1 text-xs font-semibold text-ink-500"
                     value={leaveStatusFilter}
@@ -1167,6 +1309,7 @@ export default function AdminDashboard() {
                   </button>
                 </div>
               </div>
+              <p className="mt-2 text-xs text-ink-300">Global matches this month: {globalLeaveRows.length}</p>
               <div className="mt-3 overflow-hidden rounded-2xl border border-sand-200">
                 <div className="grid grid-cols-[1fr_0.8fr_0.6fr_0.6fr] bg-sand-50 px-4 py-3 text-xs uppercase tracking-[0.2em] text-ink-300">
                   <span>Type</span>
@@ -1209,6 +1352,13 @@ export default function AdminDashboard() {
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-ink-500">Monthly Salary</h3>
                 <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={salarySearch}
+                    onChange={(event) => setSalarySearch(event.target.value)}
+                    placeholder="Search by employee ID/name"
+                    className="rounded-lg border border-sand-200 bg-white px-2 py-1 text-xs text-ink-500"
+                  />
                   <button
                     className="rounded-lg bg-brand-600 px-3 py-1 text-xs font-semibold text-white"
                     onClick={() => openSalaryModal('edit')}
@@ -1225,6 +1375,7 @@ export default function AdminDashboard() {
                   </button>
                 </div>
               </div>
+              <p className="mt-2 text-xs text-ink-300">Global salary matches this month: {globalSalaryRows.length}</p>
               <div className="mt-3 rounded-2xl border border-sand-200 p-4">
                 {monthlySalaries.find((s) => s.userId === selectedUserId && s.month === selectedMonth) ? (
                   <div className="space-y-2 text-sm">
