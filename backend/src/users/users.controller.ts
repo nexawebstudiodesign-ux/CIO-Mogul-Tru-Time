@@ -43,6 +43,12 @@ export class UsersController {
     return this.usersService.deleteUser(id);
   }
 
+  @Patch(':id/restore')
+  @Roles(Role.ADMIN)
+  restore(@Param('id') id: string) {
+    return this.usersService.restoreUser(id);
+  }
+
   @Patch(':id/leave-balance')
   @Roles(Role.ADMIN)
   updateLeaveBalance(@Param('id') id: string, @Body() dto: UpdateLeaveBalanceDto) {

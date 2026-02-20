@@ -10,6 +10,7 @@ export default function UserDashboard() {
     loggedUser,
     setLoggedUser,
     loggedUserId,
+    monthlySalaries,
     leaves,
     setLeaves,
     attendance,
@@ -33,6 +34,7 @@ export default function UserDashboard() {
 
   const [userLeaveForm, setUserLeaveForm] = useState({ type: 'CASUAL', from: '', to: '', reason: '' })
   const [userLeaveErrors, setUserLeaveErrors] = useState({})
+  const [activeTab, setActiveTab] = useState('trutime')
 
   // Configurable holidays (should match backend)
   const holidays = [
@@ -100,6 +102,26 @@ export default function UserDashboard() {
   const userTotalData = loggedUserAttendance.reduce((sum, rec) => sum + rec.data, 0)
   const userTotalLinkedin = loggedUserAttendance.reduce((sum, rec) => sum + rec.linkedin, 0)
   const userTotalFollowUps = loggedUserAttendance.reduce((sum, rec) => sum + rec.followUps, 0)
+
+  const selectedMonthSalary = useMemo(
+    () => monthlySalaries.find((salary) => salary.userId === loggedUserId && salary.month === selectedMonth),
+    [monthlySalaries, loggedUserId, selectedMonth],
+  )
+
+  const salaryBase = selectedMonthSalary?.baseSalary || loggedUser?.baseSalary || 0
+  const salaryHra = selectedMonthSalary?.hra || loggedUser?.hra || 0
+  const salaryTransport = selectedMonthSalary?.transportAllowance || loggedUser?.transportAllowance || 0
+  const salaryOtherAllowance = selectedMonthSalary?.otherAllowance || loggedUser?.otherAllowance || 0
+  const salaryBonus = selectedMonthSalary?.performanceBonus || 0
+  const salaryPf = selectedMonthSalary?.pfDeduction || loggedUser?.pfDeduction || 0
+  const salaryTax = selectedMonthSalary?.taxDeduction || loggedUser?.taxDeduction || 0
+  const salaryOtherDeduction = selectedMonthSalary?.otherDeduction || loggedUser?.otherDeduction || 0
+
+  const grossSalary = salaryBase + salaryHra + salaryTransport + salaryOtherAllowance + salaryBonus
+  const totalDeductions = salaryPf + salaryTax + salaryOtherDeduction
+  const netSalary = grossSalary - totalDeductions
+  const pendingLeaveCount = loggedUserLeaves.filter((leave) => leave.status === 'PENDING').length
+  const approvedLeaveCount = loggedUserLeaves.filter((leave) => leave.status === 'APPROVED').length
 
   // Validation
   const validateUserAttendance = () => {
@@ -347,12 +369,6 @@ export default function UserDashboard() {
             >
               Logout
             </button>
-            <a
-              href="/salary"
-              className="glass-panel rounded-2xl px-4 py-3 shadow-lift text-sm font-semibold text-brand-600 hover:bg-brand-50"
-            >
-              View Salary Slip
-            </a>
             <div className="glass-panel rounded-2xl p-4 shadow-lift">
               <div className="flex items-center justify-between gap-3 text-sm">
                 <span className="text-ink-300">Month</span>
@@ -367,6 +383,75 @@ export default function UserDashboard() {
           </div>
         </div>
 
+        <div className="mt-6 glass-panel rounded-2xl p-2 shadow-lift">
+          <div className="grid gap-2 sm:grid-cols-3">
+            <button
+              className={`rounded-xl px-4 py-2 text-sm font-semibold ${
+                activeTab === 'trutime' ? 'bg-brand-600 text-white' : 'bg-white/70 text-ink-500'
+              }`}
+              onClick={() => setActiveTab('trutime')}
+            >
+              Tru Time
+            </button>
+            <button
+              className={`rounded-xl px-4 py-2 text-sm font-semibold ${
+                activeTab === 'leave' ? 'bg-brand-600 text-white' : 'bg-white/70 text-ink-500'
+              }`}
+              onClick={() => setActiveTab('leave')}
+            >
+              Apply Leave
+            </button>
+            <button
+              className={`rounded-xl px-4 py-2 text-sm font-semibold ${
+                activeTab === 'salary' ? 'bg-brand-600 text-white' : 'bg-white/70 text-ink-500'
+              }`}
+              onClick={() => setActiveTab('salary')}
+            >
+              Salary Slip
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {activeTab === 'trutime' && (
+            <>
+              <div className="rounded-xl border border-sand-200 bg-white/70 p-4">
+                <p className="text-xs uppercase tracking-wide text-ink-300">Days Worked</p>
+                <p className="mt-1 text-2xl font-bold text-ink-500">{userTotalDays}</p>
+              </div>
+              <div className="rounded-xl border border-sand-200 bg-white/70 p-4">
+                <p className="text-xs uppercase tracking-wide text-ink-300">Compliance</p>
+                <p className="mt-1 text-2xl font-bold text-brand-600">{userComplianceRate}%</p>
+              </div>
+            </>
+          )}
+          {activeTab === 'leave' && (
+            <>
+              <div className="rounded-xl border border-sand-200 bg-white/70 p-4">
+                <p className="text-xs uppercase tracking-wide text-ink-300">Leave Balance</p>
+                <p className="mt-1 text-2xl font-bold text-ink-500">{loggedUser?.leaveBalance || 0}</p>
+              </div>
+              <div className="rounded-xl border border-sand-200 bg-white/70 p-4">
+                <p className="text-xs uppercase tracking-wide text-ink-300">Pending / Approved</p>
+                <p className="mt-1 text-2xl font-bold text-brand-600">{pendingLeaveCount} / {approvedLeaveCount}</p>
+              </div>
+            </>
+          )}
+          {activeTab === 'salary' && (
+            <>
+              <div className="rounded-xl border border-sand-200 bg-white/70 p-4">
+                <p className="text-xs uppercase tracking-wide text-ink-300">Gross Salary</p>
+                <p className="mt-1 text-2xl font-bold text-ink-500">₹{grossSalary.toLocaleString()}</p>
+              </div>
+              <div className="rounded-xl border border-sand-200 bg-white/70 p-4">
+                <p className="text-xs uppercase tracking-wide text-ink-300">Net Salary</p>
+                <p className="mt-1 text-2xl font-bold text-brand-600">₹{netSalary.toLocaleString()}</p>
+              </div>
+            </>
+          )}
+        </div>
+
+        {activeTab === 'trutime' && (
         <div className="mt-8 glass-panel rounded-3xl p-6 shadow-lift">
           <h2 className="text-xl font-bold text-ink-500">Performance Summary</h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -410,8 +495,10 @@ export default function UserDashboard() {
             </div>
           </div>
         </div>
+        )}
 
-        <div className="mt-8 grid gap-6 lg:grid-cols-[1.1fr_1fr]">
+        {activeTab === 'trutime' && (
+        <div className="mt-8 grid gap-6">
           <section className="glass-panel rounded-3xl p-6 shadow-lift">
             <h2 className="section-title text-xl">Daily Tru Time Entry</h2>
             <form className="mt-4 grid gap-3" onSubmit={handleUserAttendanceSubmit}>
@@ -537,7 +624,45 @@ export default function UserDashboard() {
               </button>
             </form>
           </section>
+        </div>
+        )}
 
+        {activeTab === 'trutime' && (
+        <div className="mt-8 grid gap-6">
+          <section className="glass-panel rounded-3xl p-6 shadow-lift">
+            <h3 className="text-sm font-semibold text-ink-500">My Tru Time Records</h3>
+            <div className="mt-3 overflow-hidden rounded-2xl border border-sand-200">
+              <div className="grid grid-cols-[0.9fr_0.6fr_0.7fr_0.7fr_0.7fr_0.7fr] bg-sand-50 px-4 py-3 text-xs uppercase tracking-[0.2em] text-ink-300">
+                <span>Date</span>
+                <span>Hours</span>
+                <span>Mails</span>
+                <span>Data</span>
+                <span>LinkedIn</span>
+                <span>Follow Ups</span>
+              </div>
+              {loggedUserAttendance.map((record) => (
+                <div
+                  key={`${record.userId}-${record.date}`}
+                  className="grid grid-cols-[0.9fr_0.6fr_0.7fr_0.7fr_0.7fr_0.7fr] items-center border-t border-sand-100 px-4 py-3 text-sm"
+                >
+                  <span className="font-semibold text-ink-500">{record.date}</span>
+                  <span className="text-ink-400">{record.hours.toFixed(1)}</span>
+                  <span className="text-ink-400">{record.mails}</span>
+                  <span className="text-ink-400">{record.data}</span>
+                  <span className="text-ink-400">{record.linkedin}</span>
+                  <span className="text-ink-400">{record.followUps}</span>
+                </div>
+              ))}
+              {loggedUserAttendance.length === 0 && (
+                <div className="px-4 py-6 text-sm text-ink-300">No Tru Time records for this month.</div>
+              )}
+            </div>
+          </section>
+        </div>
+        )}
+
+        {activeTab === 'leave' && (
+        <div className="mt-8 grid gap-6 lg:grid-cols-2">
           <section className="glass-panel rounded-3xl p-6 shadow-lift">
             <h2 className="section-title text-xl">Apply Leave</h2>
             <div className="mt-3 rounded-xl bg-blue-50 p-3">
@@ -619,38 +744,6 @@ export default function UserDashboard() {
               </button>
             </form>
           </section>
-        </div>
-
-        <div className="mt-8 grid gap-6 lg:grid-cols-2">
-          <section className="glass-panel rounded-3xl p-6 shadow-lift">
-            <h3 className="text-sm font-semibold text-ink-500">My Tru Time Records</h3>
-            <div className="mt-3 overflow-hidden rounded-2xl border border-sand-200">
-              <div className="grid grid-cols-[0.9fr_0.6fr_0.7fr_0.7fr_0.7fr_0.7fr] bg-sand-50 px-4 py-3 text-xs uppercase tracking-[0.2em] text-ink-300">
-                <span>Date</span>
-                <span>Hours</span>
-                <span>Mails</span>
-                <span>Data</span>
-                <span>LinkedIn</span>
-                <span>Follow Ups</span>
-              </div>
-              {loggedUserAttendance.map((record) => (
-                <div
-                  key={`${record.userId}-${record.date}`}
-                  className="grid grid-cols-[0.9fr_0.6fr_0.7fr_0.7fr_0.7fr_0.7fr] items-center border-t border-sand-100 px-4 py-3 text-sm"
-                >
-                  <span className="font-semibold text-ink-500">{record.date}</span>
-                  <span className="text-ink-400">{record.hours.toFixed(1)}</span>
-                  <span className="text-ink-400">{record.mails}</span>
-                  <span className="text-ink-400">{record.data}</span>
-                  <span className="text-ink-400">{record.linkedin}</span>
-                  <span className="text-ink-400">{record.followUps}</span>
-                </div>
-              ))}
-              {loggedUserAttendance.length === 0 && (
-                <div className="px-4 py-6 text-sm text-ink-300">No Tru Time records for this month.</div>
-              )}
-            </div>
-          </section>
 
           <section className="glass-panel rounded-3xl p-6 shadow-lift">
             <h3 className="text-sm font-semibold text-ink-500">My Leave Requests</h3>
@@ -701,6 +794,55 @@ export default function UserDashboard() {
             </div>
           </section>
         </div>
+        )}
+
+        {activeTab === 'salary' && (
+        <div className="mt-8 grid gap-6">
+          <section className="glass-panel rounded-3xl p-6 shadow-lift">
+            <div className="flex items-center justify-between">
+              <h2 className="section-title text-xl">Salary Slip</h2>
+              <a
+                href="/salary"
+                className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white"
+              >
+                Open Printable Slip
+              </a>
+            </div>
+            <p className="mt-2 text-sm text-ink-300">Showing salary for {selectedMonth}</p>
+
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              <div className="rounded-2xl border border-sand-200 bg-white/70 p-4">
+                <h3 className="text-sm font-semibold text-ink-500">Earnings</h3>
+                <div className="mt-3 space-y-2 text-sm">
+                  <div className="flex justify-between"><span className="text-ink-400">Base Salary</span><span>₹{salaryBase.toLocaleString()}</span></div>
+                  <div className="flex justify-between"><span className="text-ink-400">HRA</span><span>₹{salaryHra.toLocaleString()}</span></div>
+                  <div className="flex justify-between"><span className="text-ink-400">Transport</span><span>₹{salaryTransport.toLocaleString()}</span></div>
+                  <div className="flex justify-between"><span className="text-ink-400">Other Allowance</span><span>₹{salaryOtherAllowance.toLocaleString()}</span></div>
+                  <div className="flex justify-between"><span className="text-ink-400">Performance Bonus</span><span>₹{salaryBonus.toLocaleString()}</span></div>
+                  <div className="flex justify-between border-t border-sand-200 pt-2 font-semibold"><span>Gross</span><span>₹{grossSalary.toLocaleString()}</span></div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-sand-200 bg-white/70 p-4">
+                <h3 className="text-sm font-semibold text-ink-500">Deductions</h3>
+                <div className="mt-3 space-y-2 text-sm">
+                  <div className="flex justify-between"><span className="text-ink-400">PF</span><span>₹{salaryPf.toLocaleString()}</span></div>
+                  <div className="flex justify-between"><span className="text-ink-400">Tax</span><span>₹{salaryTax.toLocaleString()}</span></div>
+                  <div className="flex justify-between"><span className="text-ink-400">Other Deduction</span><span>₹{salaryOtherDeduction.toLocaleString()}</span></div>
+                  <div className="flex justify-between border-t border-sand-200 pt-2 font-semibold"><span>Total Deductions</span><span>₹{totalDeductions.toLocaleString()}</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-xl bg-brand-50 p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-ink-500">Net Salary</span>
+                <span className="text-2xl font-bold text-brand-600">₹{netSalary.toLocaleString()}</span>
+              </div>
+            </div>
+          </section>
+        </div>
+        )}
       </div>
     </div>
   )

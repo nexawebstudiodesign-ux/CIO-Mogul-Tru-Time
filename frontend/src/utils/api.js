@@ -116,6 +116,12 @@ class ApiService {
     })
   }
 
+  async restoreUser(userId) {
+    return this.request(`/users/${userId}/restore`, {
+      method: 'PATCH',
+    })
+  }
+
   async updateLeaveBalance(userId, leaveBalance) {
     return this.request(`/users/${userId}/leave-balance`, {
       method: 'PATCH',
@@ -228,6 +234,12 @@ class ApiService {
 
   async getSalary(salaryId) {
     return this.request(`/salary/${salaryId}`)
+  }
+
+  async getMySalaries(month) {
+    const params = new URLSearchParams()
+    if (month) params.append('month', month)
+    return this.request(`/salary/me?${params}`)
   }
 
   async updateSalary(salaryId, salaryData) {

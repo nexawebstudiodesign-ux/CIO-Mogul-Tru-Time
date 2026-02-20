@@ -66,6 +66,90 @@ export default function AdminDashboard() {
     otherDeduction: '',
   })
   const [salaryFormErrors, setSalaryFormErrors] = useState({})
+  const [userSearch, setUserSearch] = useState('')
+  const [leaveStatusFilter, setLeaveStatusFilter] = useState('All')
+  const [savedPasswords, setSavedPasswords] = useState(() => {
+    try {
+      const raw = localStorage.getItem('ciomogul_user_passwords')
+      return raw ? JSON.parse(raw) : {}
+    } catch {
+      return {}
+    }
+  })
+
+  const savePasswordForUser = (userId, password) => {
+    if (!userId || !password) return
+    setSavedPasswords((prev) => {
+      const next = { ...prev, [userId]: password }
+      localStorage.setItem('ciomogul_user_passwords', JSON.stringify(next))
+      return next
+    })
+  }
+
+  const toTitleCase = (value = '') => {
+    const lower = String(value).toLowerCase()
+    return lower ? lower.charAt(0).toUpperCase() + lower.slice(1) : ''
+  }
+
+  const calculateDays = (from, to) => {
+    if (!from || !to) return 0
+    const fromDate = new Date(from)
+    const toDate = new Date(to)
+    const diff = Math.floor((toDate - fromDate) / (1000 * 60 * 60 * 24)) + 1
+    return Number.isFinite(diff) && diff > 0 ? diff : 0
+  }
+
+  const normalizeUser = (user) => ({
+    ...user,
+    id: user?.id,
+    employeeId: user?.employeeId ?? user?.employee_id ?? '',
+    name: user?.name ?? '',
+    email: user?.email ?? '',
+    casualBalance: user?.casualBalance ?? user?.casual_balance ?? 0,
+    sickBalance: user?.sickBalance ?? user?.sick_balance ?? 0,
+    status:
+      user?.status ??
+      (user?.isActive === false || user?.is_active === false ? 'Inactive' : 'Active'),
+  })
+
+  const normalizeLeave = (leave) => {
+    const relationUser = Array.isArray(leave?.users) ? leave.users[0] : leave?.users
+    const from = leave?.from ?? leave?.from_date ?? ''
+    const to = leave?.to ?? leave?.to_date ?? ''
+    const typeRaw = leave?.type ?? leave?.leave_type ?? ''
+    const statusRaw = leave?.status ?? ''
+
+    return {
+      ...leave,
+      id: leave?.id,
+      userId: leave?.userId ?? leave?.user_id ?? '',
+      name: leave?.name ?? relationUser?.name ?? '',
+      type: toTitleCase(typeRaw),
+      from,
+      to,
+      days: leave?.days ?? calculateDays(from, to),
+      status: toTitleCase(statusRaw),
+    }
+  }
+
+  const normalizeAttendance = (record) => {
+    const totalMinutes = record?.totalMinutes ?? record?.total_minutes ?? 0
+    const hours =
+      record?.hours ??
+      (Number.isFinite(Number(totalMinutes)) ? Math.round((Number(totalMinutes) / 60) * 10) / 10 : 0)
+
+    return {
+      ...record,
+      id: record?.id,
+      userId: record?.userId ?? record?.user_id ?? '',
+      date: record?.date ?? '',
+      hours,
+      mails: record?.mails ?? record?.mails_count ?? 0,
+      data: record?.data ?? record?.data_count ?? 0,
+      linkedin: record?.linkedin ?? record?.linkedin_count ?? 0,
+      followUps: record?.followUps ?? record?.follow_up_count ?? 0,
+    }
+  }
 
   // Fetch data from backend on mount
   useEffect(() => {
@@ -79,12 +163,19 @@ export default function AdminDashboard() {
           apiService.getAllAttendance(),
           apiService.getAllSalaries(),
         ])
-        setUsers(usersData)
-        setLeaves(leavesData)
-        setAttendance(attendanceData)
-        setMonthlySalaries(salariesData)
-        if (usersData.length > 0 && !selectedUserId) {
-          setSelectedUserId(usersData[0].id)
+        const normalizedUsers = Array.isArray(usersData) ? usersData.map(normalizeUser) : []
+        const normalizedLeaves = Array.isArray(leavesData) ? leavesData.map(normalizeLeave) : []
+        const normalizedAttendance = Array.isArray(attendanceData)
+          ? attendanceData.map(normalizeAttendance)
+          : []
+        const normalizedSalaries = Array.isArray(salariesData) ? salariesData : []
+
+        setUsers(normalizedUsers)
+        setLeaves(normalizedLeaves)
+        setAttendance(normalizedAttendance)
+        setMonthlySalaries(normalizedSalaries)
+        if (normalizedUsers.length > 0 && !selectedUserId) {
+          setSelectedUserId(normalizedUsers[0].id)
         }
       } catch (err) {
         console.error('Failed to fetch data:', err)
@@ -97,7 +188,10 @@ export default function AdminDashboard() {
   }, [])
 
   const filteredAttendance = useMemo(
-    () => attendance.filter((record) => record.date.startsWith(selectedMonth)),
+    () =>
+      attendance.filter(
+        (record) => typeof record?.date === 'string' && record.date.startsWith(selectedMonth),
+      ),
     [attendance, selectedMonth],
   )
 
@@ -107,7 +201,10 @@ export default function AdminDashboard() {
   )
 
   const filteredLeaves = useMemo(
-    () => leaves.filter((leave) => leave.from.startsWith(selectedMonth)),
+    () =>
+      leaves.filter(
+        (leave) => typeof leave?.from === 'string' && leave.from.startsWith(selectedMonth),
+      ),
     [leaves, selectedMonth],
   )
 
@@ -161,7 +258,9 @@ export default function AdminDashboard() {
   }, [userAttendance, userLeaves, userStats.entries, selectedMonth])
 
   const monthSummary = useMemo(() => {
-    return users.map((user) => {
+    return users
+      .filter((user) => user.isActive !== false)
+      .map((user) => {
       const records = filteredAttendance.filter((record) => record.userId === user.id)
       const entries = records.length
       const totalHours = records.reduce((sum, record) => sum + record.hours, 0)
@@ -178,12 +277,32 @@ export default function AdminDashboard() {
     })
   }, [filteredAttendance, users])
 
+  const activeUsers = useMemo(() => users.filter((user) => user.isActive !== false), [users])
+  const recycleUsers = useMemo(() => users.filter((user) => user.isActive === false), [users])
+
+  const filteredMonthSummary = useMemo(() => {
+    const term = userSearch.trim().toLowerCase()
+    if (!term) return monthSummary
+
+    return monthSummary.filter((user) => {
+      const name = String(user.name ?? '').toLowerCase()
+      const employeeId = String(user.employeeId ?? '').toLowerCase()
+      const email = String(user.email ?? '').toLowerCase()
+      return name.includes(term) || employeeId.includes(term) || email.includes(term)
+    })
+  }, [monthSummary, userSearch])
+
+  const visibleUserLeaves = useMemo(() => {
+    if (leaveStatusFilter === 'All') return userLeaves
+    return userLeaves.filter((leave) => leave.status === leaveStatusFilter)
+  }, [userLeaves, leaveStatusFilter])
+
   const selectedUser = users.find((user) => user.id === selectedUserId)
 
   const handleExportCsv = () => {
     const headers = ['Employee ID', 'Name', 'Email', 'Entries', 'Total Hours', 'Avg Hours', '9h Compliance %']
     const rows = monthSummary.map((user) => [
-      user.id,
+      user.employeeId || user.id,
       user.name,
       user.email,
       user.entries,
@@ -232,7 +351,7 @@ export default function AdminDashboard() {
     const rows = filteredAttendance.map((record) => {
       const user = users.find((u) => u.id === record.userId)
       return [
-        record.userId,
+        user?.employeeId || record.userId,
         user?.name || 'Unknown',
         record.date,
         record.hours.toFixed(1),
@@ -264,7 +383,7 @@ export default function AdminDashboard() {
         const deductions = salary.pfDeduction + salary.taxDeduction + salary.otherDeduction
         const net = gross - deductions
         return [
-          salary.userId,
+          user?.employeeId || salary.userId,
           user?.name || 'Unknown',
           salary.month,
           salary.workingDays,
@@ -308,7 +427,7 @@ export default function AdminDashboard() {
           firstName,
           lastName,
           email: user.email,
-          password: '',
+          password: savedPasswords[user.id] ?? '',
           casualBalance: String(user.casualBalance ?? 0),
           sickBalance: String(user.sickBalance ?? 0),
         })
@@ -391,9 +510,13 @@ export default function AdminDashboard() {
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userForm.email)) {
       errors.email = 'Enter a valid email.'
     }
-    if (!userForm.password.trim()) {
-      errors.password = 'Password is required.'
-    } else if (userForm.password.length < 6) {
+    if (mode === 'add') {
+      if (!userForm.password.trim()) {
+        errors.password = 'Password is required.'
+      } else if (userForm.password.length < 6) {
+        errors.password = 'Password must be at least 6 characters.'
+      }
+    } else if (mode === 'edit' && userForm.password.trim() && userForm.password.length < 6) {
       errors.password = 'Password must be at least 6 characters.'
     }
     const casualValue = userForm.casualBalance === '' ? NaN : Number(userForm.casualBalance)
@@ -480,6 +603,7 @@ export default function AdminDashboard() {
         const newUser = await apiService.createUser(userData)
         setUsers((prev) => [newUser, ...prev])
         setSelectedUserId(newUser.id)
+        savePasswordForUser(newUser.id, userForm.password)
       }
       if (modalMode === 'edit') {
         const userData = {
@@ -488,10 +612,11 @@ export default function AdminDashboard() {
           casualBalance: clampBalance(Number(userForm.casualBalance || 0)),
           sickBalance: clampBalance(Number(userForm.sickBalance || 0)),
         }
-        if (userForm.password) {
-          userData.password = userForm.password
-        }
         const updatedUser = await apiService.updateUser(selectedUserId, userData)
+        if (userForm.password.trim()) {
+          await apiService.resetPassword(selectedUserId, userForm.password)
+          savePasswordForUser(selectedUserId, userForm.password)
+        }
         setUsers((prev) =>
           prev.map((user) => (user.id === selectedUserId ? updatedUser : user))
         )
@@ -510,15 +635,31 @@ export default function AdminDashboard() {
     }
 
     try {
-      await apiService.deleteUser(selectedUserId)
-      setUsers((prev) => prev.filter((user) => user.id !== selectedUserId))
-      setLeaves((prev) => prev.filter((leave) => leave.userId !== selectedUserId))
-      const remaining = users.filter((user) => user.id !== selectedUserId)
+      const deletedUser = await apiService.deleteUser(selectedUserId)
+      setUsers((prev) =>
+        prev.map((user) =>
+          user.id === selectedUserId
+            ? { ...user, ...normalizeUser(deletedUser), isActive: false, status: 'Inactive' }
+            : user,
+        ),
+      )
+      const remaining = users.filter((user) => user.id !== selectedUserId && user.isActive !== false)
       setSelectedUserId(remaining[0]?.id ?? '')
       setShowUserModal(false)
     } catch (error) {
       console.error('Failed to delete user:', error)
       setUserFormErrors({ general: error.message || 'Failed to delete user' })
+    }
+  }
+
+  const handleUserRestore = async (userId) => {
+    try {
+      const restoredUser = await apiService.restoreUser(userId)
+      const normalized = normalizeUser(restoredUser)
+      setUsers((prev) => prev.map((user) => (user.id === userId ? normalized : user)))
+      setSelectedUserId(userId)
+    } catch (error) {
+      console.error('Failed to restore user:', error)
     }
   }
 
@@ -690,7 +831,7 @@ export default function AdminDashboard() {
             </button>
           </div>
         </div>
-      ) : users.length === 0 ? (
+      ) : activeUsers.length === 0 ? (
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="glass-panel rounded-3xl p-8 shadow-lift text-center max-w-md">
             <p className="text-ink-500 text-lg mb-2">👋 Welcome!</p>
@@ -705,6 +846,7 @@ export default function AdminDashboard() {
         </div>
       ) : (
       <div className="mx-auto max-w-6xl">
+        <div className="sticky top-4 z-20 mb-6 glass-panel rounded-2xl p-4 shadow-lift">
         <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div className="flex-1">
             <div className="flex items-center justify-between">
@@ -741,10 +883,11 @@ export default function AdminDashboard() {
             <div className="flex items-center justify-between text-sm">
               <span className="text-ink-300">Overall Compliance</span>
               <span className="pill bg-brand-100 text-brand-700">{Math.round(
-                (monthSummary.reduce((sum, user) => sum + user.compliance, 0) / monthSummary.length) || 0,
+                (filteredMonthSummary.reduce((sum, user) => sum + user.compliance, 0) / filteredMonthSummary.length) || 0,
               )}%</span>
             </div>
           </div>
+        </div>
         </div>
         <div className="mt-8 grid gap-6 lg:grid-cols-[1.3fr_1fr]">
           <section className="glass-panel rounded-3xl p-6 shadow-lift">
@@ -754,6 +897,13 @@ export default function AdminDashboard() {
                 <p className="text-sm text-ink-300">Click a user to see leave and Tru Time details.</p>
               </div>
               <div className="flex items-center gap-3">
+                <input
+                  type="text"
+                  placeholder="Search user"
+                  value={userSearch}
+                  onChange={(event) => setUserSearch(event.target.value)}
+                  className="rounded-lg border border-sand-200 bg-white/80 px-3 py-1 text-sm text-ink-500"
+                />
                 <span className="text-xs uppercase tracking-[0.2em] text-ink-300">Month</span>
                 <input
                   type="month"
@@ -764,7 +914,7 @@ export default function AdminDashboard() {
                 <button
                   type="button"
                   onClick={handleExportCsv}
-                  className="rounded-full bg-ink-500 px-4 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-sand-50"
+                  className="rounded-full border border-sand-200 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-ink-500"
                 >
                   Export CSV
                 </button>
@@ -782,7 +932,7 @@ export default function AdminDashboard() {
                 <span>Sick</span>
                 <span>Actions</span>
               </div>
-              {monthSummary.map((user) => (
+              {filteredMonthSummary.map((user) => (
                 <div
                   key={user.id}
                   role="button"
@@ -797,7 +947,7 @@ export default function AdminDashboard() {
                 >
                   <div>
                     <p className="font-semibold text-ink-500">{user.name}</p>
-                    <p className="text-xs text-ink-300">{user.id}</p>
+                    <p className="text-xs text-ink-300">{user.employeeId || user.id}</p>
                   </div>
                   <span className="font-semibold text-ink-500">{user.entries}</span>
                   <span className="text-ink-400">{user.totalHours.toFixed(1)}</span>
@@ -852,13 +1002,48 @@ export default function AdminDashboard() {
                 Delete selected
               </button>
             </div>
+
+            <div className="mt-6 rounded-2xl border border-sand-200 p-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-ink-500">Recycle Bin (Admin only)</h3>
+                <span className="pill bg-sand-100 text-ink-400">{recycleUsers.length} users</span>
+              </div>
+              {recycleUsers.length === 0 ? (
+                <p className="mt-3 text-sm text-ink-300">No deleted users.</p>
+              ) : (
+                <div className="mt-3 space-y-2">
+                  {recycleUsers.map((user) => (
+                    <div
+                      key={user.id}
+                      className="flex items-center justify-between rounded-xl border border-sand-200 bg-white/70 px-3 py-2"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setSelectedUserId(user.id)}
+                        className="text-left"
+                      >
+                        <p className="text-sm font-semibold text-ink-500">{user.name}</p>
+                        <p className="text-xs text-ink-300">{user.employeeId || user.id}</p>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleUserRestore(user.id)}
+                        className="rounded-lg bg-brand-600 px-3 py-1 text-xs font-semibold text-white"
+                      >
+                        Restore
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </section>
 
           <section className="glass-panel rounded-3xl p-6 shadow-lift">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="section-title text-xl">{selectedUser?.name ?? 'User'} Overview</h2>
-                <p className="text-sm text-ink-300">{selectedUser?.id} · {selectedUser?.email}</p>
+                <p className="text-sm text-ink-300">{selectedUser?.employeeId || selectedUser?.id} · {selectedUser?.email}</p>
               </div>
               <span
                 className={`pill ${
@@ -896,7 +1081,7 @@ export default function AdminDashboard() {
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-ink-500">Tru Time Records</h3>
                 <button
-                  className="rounded-lg bg-purple-600 px-3 py-1 text-xs font-semibold text-white"
+                  className="rounded-lg border border-sand-200 bg-white px-3 py-1 text-xs font-semibold text-ink-500"
                   onClick={handleExportAttendanceCsv}
                 >
                   Export CSV
@@ -934,6 +1119,16 @@ export default function AdminDashboard() {
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-ink-500">Leaves</h3>
                 <div className="flex gap-2">
+                  <select
+                    className="rounded-lg border border-sand-200 bg-white px-2 py-1 text-xs font-semibold text-ink-500"
+                    value={leaveStatusFilter}
+                    onChange={(event) => setLeaveStatusFilter(event.target.value)}
+                  >
+                    <option value="All">All</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Approved">Approved</option>
+                    <option value="Rejected">Rejected</option>
+                  </select>
                   <button
                     className="rounded-lg bg-brand-600 px-3 py-1 text-xs font-semibold text-white"
                     onClick={() => openLeaveModal('add')}
@@ -965,7 +1160,7 @@ export default function AdminDashboard() {
                     Reject
                   </button>
                   <button
-                    className="rounded-lg bg-purple-600 px-3 py-1 text-xs font-semibold text-white"
+                    className="rounded-lg border border-sand-200 bg-white px-3 py-1 text-xs font-semibold text-ink-500"
                     onClick={handleExportLeavesCsv}
                   >
                     Export CSV
@@ -979,7 +1174,7 @@ export default function AdminDashboard() {
                   <span>Days</span>
                   <span>Status</span>
                 </div>
-                {userLeaves.map((leave) => (
+                {visibleUserLeaves.map((leave) => (
                   <button
                     type="button"
                     key={leave.id}
@@ -1004,7 +1199,7 @@ export default function AdminDashboard() {
                     </span>
                   </button>
                 ))}
-                {userLeaves.length === 0 && (
+                {visibleUserLeaves.length === 0 && (
                   <div className="px-4 py-6 text-sm text-ink-300">No leave records for this month.</div>
                 )}
               </div>
@@ -1023,7 +1218,7 @@ export default function AdminDashboard() {
                       : 'Set Salary'}
                   </button>
                   <button
-                    className="rounded-lg bg-purple-600 px-3 py-1 text-xs font-semibold text-white"
+                    className="rounded-lg border border-sand-200 bg-white px-3 py-1 text-xs font-semibold text-ink-500"
                     onClick={handleExportSalaryCsv}
                   >
                     Export CSV
@@ -1384,12 +1579,16 @@ export default function AdminDashboard() {
                   <input
                     className="input-field"
                     placeholder="Password"
-                    type="password"
-                    required
+                    type={modalMode === 'edit' ? 'text' : 'password'}
+                    required={modalMode === 'add'}
                     value={userForm.password}
                     onChange={(event) => setUserForm((prev) => ({ ...prev, password: event.target.value }))}
                   />
-                  <p className="mt-1 text-xs text-ink-300">Minimum 6 characters</p>
+                  <p className="mt-1 text-xs text-ink-300">
+                    {modalMode === 'edit'
+                      ? 'Password is visible here and stays until you change it.'
+                      : 'Minimum 6 characters'}
+                  </p>
                   {userFormErrors.password && (
                     <p className="mt-1 text-xs text-red-500">{userFormErrors.password}</p>
                   )}
@@ -1483,7 +1682,7 @@ export default function AdminDashboard() {
                     <option value="">Select employee</option>
                     {users.map((user) => (
                       <option key={user.id} value={user.id}>
-                        {user.name} ({user.id})
+                        {user.name} ({user.employeeId || user.id})
                       </option>
                     ))}
                   </select>

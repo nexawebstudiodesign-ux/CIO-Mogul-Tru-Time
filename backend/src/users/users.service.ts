@@ -217,21 +217,98 @@ export class UsersService {
   async deleteUser(userId: string) {
     const { data: user, error: userError } = await this.supabaseService.client
       .from('users')
-      .select('id')
+      .select('id,name,email,employee_id,role,casual_balance,sick_balance,is_active,created_at')
       .eq('id', userId)
       .maybeSingle();
     if (userError || !user) {
       throw new NotFoundException('User not found');
     }
-    const { error: authDeleteError } = await this.supabaseService.client.auth.admin.deleteUser(userId);
-    if (authDeleteError) {
-      throw new BadRequestException('Unable to delete auth user');
+
+    if (user.is_active === false) {
+      return {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        employeeId: user.employee_id,
+        role: user.role,
+        casualBalance: user.casual_balance,
+        sickBalance: user.sick_balance,
+        isActive: false,
+        createdAt: user.created_at,
+      };
     }
-    const { error: deleteError } = await this.supabaseService.client.from('users').delete().eq('id', userId);
-    if (deleteError) {
-      throw new BadRequestException('Unable to delete user');
+
+    const { data: updated, error: updateError } = await this.supabaseService.client
+      .from('users')
+      .update({ is_active: false })
+      .eq('id', userId)
+      .select('id,name,email,employee_id,role,casual_balance,sick_balance,is_active,created_at')
+      .single();
+
+    if (updateError || !updated) {
+      throw new BadRequestException('Unable to move user to recycle bin');
     }
-    return { message: 'User deleted' };
+
+    return {
+      id: updated.id,
+      name: updated.name,
+      email: updated.email,
+      employeeId: updated.employee_id,
+      role: updated.role,
+      casualBalance: updated.casual_balance,
+      sickBalance: updated.sick_balance,
+      isActive: updated.is_active,
+      createdAt: updated.created_at,
+    };
+  }
+
+  async restoreUser(userId: string) {
+    const { data: user, error: userError } = await this.supabaseService.client
+      .from('users')
+      .select('id,name,email,employee_id,role,casual_balance,sick_balance,is_active,created_at')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (userError || !user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (user.is_active === true) {
+      return {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        employeeId: user.employee_id,
+        role: user.role,
+        casualBalance: user.casual_balance,
+        sickBalance: user.sick_balance,
+        isActive: true,
+        createdAt: user.created_at,
+      };
+    }
+
+    const { data: updated, error: updateError } = await this.supabaseService.client
+      .from('users')
+      .update({ is_active: true })
+      .eq('id', userId)
+      .select('id,name,email,employee_id,role,casual_balance,sick_balance,is_active,created_at')
+      .single();
+
+    if (updateError || !updated) {
+      throw new BadRequestException('Unable to restore user');
+    }
+
+    return {
+      id: updated.id,
+      name: updated.name,
+      email: updated.email,
+      employeeId: updated.employee_id,
+      role: updated.role,
+      casualBalance: updated.casual_balance,
+      sickBalance: updated.sick_balance,
+      isActive: updated.is_active,
+      createdAt: updated.created_at,
+    };
   }
 
   async getMe(userId: string) {
@@ -271,6 +348,6 @@ export class UsersService {
         max = Math.max(max, Number(match[1]));
       }
     }
-    return `${prefix}${String(max + 1).padStart(4, '0')}`;
+    return `${prefix}${String(max + 1).padStart(3, '0')}`;
   }
 }

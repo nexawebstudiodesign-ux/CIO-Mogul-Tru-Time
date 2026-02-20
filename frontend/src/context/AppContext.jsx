@@ -45,12 +45,59 @@ export function AppProvider({ children }) {
 
     apiService
       .getMe()
-      .then((userData) => {
+      .then(async (userData) => {
         setLoggedUser(userData)
         setLoggedUserId(userData.id ?? '')
         localStorage.setItem('ciomogul_user', JSON.stringify(userData))
         localStorage.setItem('ciomogul_user_id', userData.id ?? '')
         setIsAdminAuthorized(userData.role === 'ADMIN')
+
+        if (userData.role === 'USER') {
+          const [myAttendance, myLeaves, mySalaries] = await Promise.all([
+            apiService.getMyAttendance(),
+            apiService.getMyLeaves(),
+            apiService.getMySalaries(),
+          ])
+
+          const normalizedAttendance = (myAttendance ?? []).map((record) => ({
+            userId: record.userId ?? record.user_id ?? userData.id,
+            date: record.date,
+            hours:
+              record.hours ??
+              (Number.isFinite(Number(record.total_minutes))
+                ? Math.round((Number(record.total_minutes) / 60) * 10) / 10
+                : 0),
+            mails: record.mails ?? record.mails_count ?? 0,
+            data: record.data ?? record.data_count ?? 0,
+            linkedin: record.linkedin ?? record.linkedin_count ?? 0,
+            followUps: record.followUps ?? record.follow_up_count ?? 0,
+          }))
+
+          const normalizedLeaves = (myLeaves ?? []).map((leave) => {
+            const from = leave.from ?? leave.from_date
+            const to = leave.to ?? leave.to_date
+            const days =
+              leave.days ??
+              (from && to
+                ? Math.floor((new Date(to) - new Date(from)) / (1000 * 60 * 60 * 24)) + 1
+                : 0)
+
+            return {
+              id: leave.id,
+              userId: leave.userId ?? leave.user_id ?? userData.id,
+              name: leave.name ?? userData.name,
+              type: leave.type ?? leave.leave_type,
+              from,
+              to,
+              days,
+              status: leave.status,
+            }
+          })
+
+          setAttendance(normalizedAttendance)
+          setLeaves(normalizedLeaves)
+          setMonthlySalaries(mySalaries ?? [])
+        }
       })
       .catch((err) => {
         console.error('Failed to validate session:', err)

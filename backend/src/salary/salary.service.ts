@@ -7,13 +7,35 @@ import { UpdateMonthlySalaryDto } from './dto/update-salary.dto';
 export class SalaryService {
   constructor(private supabase: SupabaseService) {}
 
+  private normalizeMonth(month: string) {
+    if (!month) {
+      throw new BadRequestException('Month is required');
+    }
+
+    if (/^\d{4}-\d{2}$/.test(month)) {
+      return `${month}-01`;
+    }
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(month)) {
+      return `${month.slice(0, 7)}-01`;
+    }
+
+    throw new BadRequestException('Month must be in YYYY-MM format');
+  }
+
   async create(createSalaryDto: CreateMonthlySalaryDto) {
+    if (!createSalaryDto.userId) {
+      throw new BadRequestException('User is required');
+    }
+
+    const normalizedMonth = this.normalizeMonth(createSalaryDto.month);
+
     // Validation 1: Check for duplicate salary record for same user/month
     const { data: existing, error: checkError } = await this.supabase.client
       .from('monthly_salaries')
       .select('id,month')
       .eq('user_id', createSalaryDto.userId)
-      .eq('month', createSalaryDto.month)
+      .eq('month', normalizedMonth)
       .maybeSingle();
 
     if (checkError) {
@@ -26,35 +48,11 @@ export class SalaryService {
       );
     }
 
-    // Validation 2: Only allow current month or next month
-    const today = new Date();
-    const currentYear = today.getFullYear();
-    const currentMonth = today.getMonth() + 1; // getMonth() returns 0-11
-    const [year, month] = createSalaryDto.month.split('-').map(Number);
-    
-    const monthsDiff = (year - currentYear) * 12 + (month - currentMonth);
-    if (monthsDiff > 1) {
-      const currentMonthStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
-      const nextMonthDate = new Date(currentYear, currentMonth, 1);
-      const nextMonthStr = `${nextMonthDate.getFullYear()}-${String(nextMonthDate.getMonth() + 1).padStart(2, '0')}`;
-      throw new BadRequestException(
-        `You can only create salary records for the current month (${currentMonthStr}) or next month (${nextMonthStr}). Cannot create for ${createSalaryDto.month}.`
-      );
-    }
-
-    // Validation 3: Prevent salary creation for months older than 12 months
-    if (monthsDiff < -12) {
-      throw new BadRequestException(
-        'Cannot create salary records for months older than 12 months'
-      );
-    }
-
     const { data, error } = await this.supabase.client
       .from('monthly_salaries')
       .insert({
         user_id: createSalaryDto.userId,
-        month: createSalaryDto.month,
-        working_days: createSalaryDto.workingDays || 0,
+        month: normalizedMonth,
         base_salary: createSalaryDto.baseSalary || 0,
         hra: createSalaryDto.hra || 0,
         transport_allowance: createSalaryDto.transportAllowance || 0,
@@ -75,7 +73,7 @@ export class SalaryService {
     let query = this.supabase.client.from('monthly_salaries').select('*');
 
     if (month) {
-      query = query.eq('month', month);
+      query = query.eq('month', this.normalizeMonth(month));
     }
     if (userId) {
       query = query.eq('user_id', userId);
@@ -84,6 +82,14 @@ export class SalaryService {
     const { data, error } = await query;
     if (error) throw error;
     return data.map((record) => this.mapToDto(record));
+  }
+
+  async findMine(userId: string, month?: string) {
+    if (!userId) {
+      throw new BadRequestException('User is required');
+    }
+
+    return this.findAll(month, userId);
   }
 
   async findOne(id: string) {
@@ -100,7 +106,6 @@ export class SalaryService {
   async update(id: string, updateSalaryDto: UpdateMonthlySalaryDto) {
     const updateData: any = {};
     
-    if (updateSalaryDto.workingDays !== undefined) updateData.working_days = updateSalaryDto.workingDays;
     if (updateSalaryDto.baseSalary !== undefined) updateData.base_salary = updateSalaryDto.baseSalary;
     if (updateSalaryDto.hra !== undefined) updateData.hra = updateSalaryDto.hra;
     if (updateSalaryDto.transportAllowance !== undefined) updateData.transport_allowance = updateSalaryDto.transportAllowance;
@@ -135,8 +140,8 @@ export class SalaryService {
     return {
       id: data.id,
       userId: data.user_id,
-      month: data.month,
-      workingDays: data.working_days,
+      month: typeof data.month === 'string' ? data.month.slice(0, 7) : data.month,
+      workingDays: data.working_days ?? data.workingDays ?? null,
       baseSalary: data.base_salary,
       hra: data.hra,
       transportAllowance: data.transport_allowance,

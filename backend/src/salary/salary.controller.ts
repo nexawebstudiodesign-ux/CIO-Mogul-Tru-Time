@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards, Req } from '@nestjs/common';
 import { SalaryService } from './salary.service';
 import { CreateMonthlySalaryDto } from './dto/create-salary.dto';
 import { UpdateMonthlySalaryDto } from './dto/update-salary.dto';
@@ -22,6 +22,12 @@ export class SalaryController {
   @Roles(Role.ADMIN)
   findAll(@Query('month') month?: string, @Query('userId') userId?: string) {
     return this.salaryService.findAll(month, userId);
+  }
+
+  @Get('me')
+  @Roles(Role.USER)
+  findMine(@Req() req: { user?: { id?: string } }, @Query('month') month?: string) {
+    return this.salaryService.findMine(req.user?.id ?? '', month);
   }
 
   @Get(':id')
