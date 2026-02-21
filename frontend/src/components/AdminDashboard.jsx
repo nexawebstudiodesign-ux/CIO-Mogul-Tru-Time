@@ -75,6 +75,7 @@ export default function AdminDashboard() {
   const [reportEmail, setReportEmail] = useState('')
   const [reportBusy, setReportBusy] = useState(false)
   const [reportMessage, setReportMessage] = useState('')
+  const [newUserCredentials, setNewUserCredentials] = useState(null)
   const [savedPasswords, setSavedPasswords] = useState(() => {
     try {
       const raw = localStorage.getItem('ciomogul_user_passwords')
@@ -232,7 +233,7 @@ export default function AdminDashboard() {
     const entries = userAttendance.length
     const totalHours = userAttendance.reduce((sum, record) => sum + record.hours, 0)
     const avgHours = entries ? totalHours / entries : 0
-    const complianceCount = userAttendance.filter((record) => record.hours >= 9).length
+    const complianceCount = userAttendance.filter((record) => record.hours >= 4.5).length
     const compliance = entries ? Math.round((complianceCount / entries) * 100) : 0
     return { entries, totalHours, avgHours, compliance }
   }, [userAttendance])
@@ -272,7 +273,7 @@ export default function AdminDashboard() {
       const entries = records.length
       const totalHours = records.reduce((sum, record) => sum + record.hours, 0)
       const avgHours = entries ? totalHours / entries : 0
-      const complianceCount = records.filter((record) => record.hours >= 9).length
+      const complianceCount = records.filter((record) => record.hours >= 4.5).length
       const compliance = entries ? Math.round((complianceCount / entries) * 100) : 0
       return {
         ...user,
@@ -310,7 +311,7 @@ export default function AdminDashboard() {
       const user = users.find((item) => item.id === record.userId)
       const employeeId = String(user?.employeeId ?? '').toLowerCase()
       const name = String(user?.name ?? '').toLowerCase()
-      const status = record.hours >= 9 ? 'Compliant' : 'Non-compliant'
+      const status = record.hours >= 4.5 ? 'Compliant' : 'Non-compliant'
 
       const searchPass =
         !search ||
@@ -355,7 +356,7 @@ export default function AdminDashboard() {
   const selectedUser = users.find((user) => user.id === selectedUserId)
 
   const handleExportCsv = () => {
-    const headers = ['Employee ID', 'Name', 'Email', 'Entries', 'Total Hours', 'Avg Hours', '9h Compliance %']
+    const headers = ['Employee ID', 'Name', 'Email', 'Entries', 'Total Hours', 'Avg Hours', 'Compliance %']
     const rows = monthSummary.map((user) => [
       user.employeeId || user.id,
       user.name,
@@ -659,6 +660,11 @@ export default function AdminDashboard() {
         setUsers((prev) => [newUser, ...prev])
         setSelectedUserId(newUser.id)
         savePasswordForUser(newUser.id, userForm.password)
+        setNewUserCredentials({
+          name: newUser.name,
+          employeeId: newUser.employeeId,
+          password: userForm.password,
+        })
       }
       if (modalMode === 'edit') {
         const userData = {
@@ -680,6 +686,16 @@ export default function AdminDashboard() {
     } catch (error) {
       console.error('Failed to save user:', error)
       setUserFormErrors({ general: error.message || 'Failed to save user' })
+    }
+  }
+
+  const handleCopyCredentials = async () => {
+    if (!newUserCredentials) return
+    const text = `Employee Login Credentials\nName: ${newUserCredentials.name}\nEmployee ID: ${newUserCredentials.employeeId}\nPassword: ${newUserCredentials.password}`
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch {
+      // no-op
     }
   }
 
@@ -897,7 +913,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen p-6 md:p-10">
+    <div className="min-h-screen p-6 md:p-10 flex justify-center">
       {isLoading ? (
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
@@ -930,8 +946,8 @@ export default function AdminDashboard() {
           </div>
         </div>
       ) : (
-      <div className="mx-auto max-w-6xl">
-        <div className="sticky top-4 z-20 mb-6 glass-panel rounded-2xl p-4 shadow-lift">
+      <div className="w-full max-w-6xl">
+        <div className="mb-6 glass-panel rounded-2xl p-4 shadow-lift">
         <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div className="flex-1">
             <div className="flex items-center justify-between">
@@ -939,7 +955,7 @@ export default function AdminDashboard() {
                 <p className="text-sm uppercase tracking-[0.3em] text-ink-300">CIO Mogul</p>
                 <h1 className="section-title">Admin Performance Dashboard</h1>
                 <p className="mt-2 max-w-xl text-sm text-ink-300">
-                  Review all user records, drill into individual leave history, and track monthly 9-hour compliance.
+                  Review all user records, drill into individual leave history, and track monthly compliance.
                 </p>
               </div>
               <button
@@ -1007,12 +1023,12 @@ export default function AdminDashboard() {
             </div>
 
             <div className="mt-6 overflow-hidden rounded-2xl border border-sand-200">
-              <div className="grid grid-cols-[1.2fr_0.7fr_0.7fr_0.7fr_0.6fr_0.6fr_0.6fr_0.9fr] bg-sand-50 px-4 py-3 text-xs uppercase tracking-[0.2em] text-ink-300">
+              <div className="grid grid-cols-[1.2fr_0.7fr_0.7fr_0.7fr_0.6fr_0.6fr_0.6fr_0.9fr] bg-sand-50 px-4 py-4 text-xs uppercase tracking-[0.2em] text-ink-500 font-semibold border-b border-sand-200">
                 <span>User</span>
                 <span>Entries</span>
                 <span>Total Hours</span>
                 <span>Avg Hours</span>
-                <span>9h %</span>
+                <span>Compliance %</span>
                 <span>Casual</span>
                 <span>Sick</span>
                 <span>Actions</span>
@@ -1024,7 +1040,7 @@ export default function AdminDashboard() {
                   tabIndex={0}
                   onClick={() => setSelectedUserId(user.id)}
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedUserId(user.id) } }}
-                  className={`grid w-full grid-cols-[1.2fr_0.7fr_0.7fr_0.7fr_0.6fr_0.6fr_0.6fr_0.9fr] items-center border-t px-4 py-3 text-left text-sm transition cursor-pointer ${
+                  className={`grid w-full grid-cols-[1.2fr_0.7fr_0.7fr_0.7fr_0.6fr_0.6fr_0.6fr_0.9fr] items-center border-t border-sand-200 px-4 py-4 text-left text-sm font-semibold text-ink-500 transition cursor-pointer ${
                     selectedUserId === user.id 
                       ? 'bg-brand-100 border-brand-300 border-l-4 border-l-brand-600' 
                       : 'border-sand-100 hover:bg-sand-50/80'
@@ -1087,6 +1103,35 @@ export default function AdminDashboard() {
                 Delete selected
               </button>
             </div>
+
+            {newUserCredentials && (
+              <div className="mt-4 rounded-2xl border border-brand-200 bg-brand-50 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-brand-700">New employee created</p>
+                    <p className="text-xs text-ink-500 mt-1">Share these credentials with the employee for app login.</p>
+                    <p className="text-xs text-ink-500 mt-1">Employee ID: <span className="font-semibold">{newUserCredentials.employeeId}</span></p>
+                    <p className="text-xs text-ink-500">Password: <span className="font-semibold">{newUserCredentials.password}</span></p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      className="rounded-lg bg-brand-600 px-3 py-1 text-xs font-semibold text-white"
+                      onClick={handleCopyCredentials}
+                    >
+                      Copy
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-lg border border-sand-200 bg-white px-3 py-1 text-xs font-semibold text-ink-500"
+                      onClick={() => setNewUserCredentials(null)}
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="mt-6 rounded-2xl border border-sand-200 p-4">
               <div className="flex items-center justify-between">
@@ -1151,7 +1196,7 @@ export default function AdminDashboard() {
                 <p className="mt-2 text-2xl font-semibold text-ink-500">{userStats.avgHours.toFixed(1)}</p>
               </div>
               <div className="rounded-2xl border border-sand-200 bg-white/70 p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-ink-300">9h Compliance</p>
+                <p className="text-xs uppercase tracking-[0.2em] text-ink-300">Compliance</p>
                 <p className="mt-2 text-2xl font-semibold text-ink-500">{userStats.compliance}%</p>
                 <div className="mt-3 h-2 overflow-hidden rounded-full bg-sand-100">
                   <div
@@ -1222,7 +1267,7 @@ export default function AdminDashboard() {
                 </select>
               </div>
               <div className="mt-3 overflow-hidden rounded-2xl border border-sand-200">
-                <div className="grid grid-cols-[0.9fr_0.6fr_0.7fr_0.7fr_0.7fr_0.7fr] bg-sand-50 px-4 py-3 text-xs uppercase tracking-[0.2em] text-ink-300">
+                <div className="grid grid-cols-[0.9fr_0.6fr_0.7fr_0.7fr_0.7fr_0.7fr] bg-sand-50 px-4 py-4 text-xs uppercase tracking-[0.2em] text-ink-500 font-semibold border-b border-sand-200">
                   <span>Date</span>
                   <span>Hours</span>
                   <span>Mails</span>
@@ -1233,7 +1278,7 @@ export default function AdminDashboard() {
                 {userAttendance.map((record) => (
                   <div
                     key={`${record.userId}-${record.date}`}
-                    className="grid grid-cols-[0.9fr_0.6fr_0.7fr_0.7fr_0.7fr_0.7fr] items-center border-t border-sand-100 px-4 py-3 text-sm"
+                    className="grid grid-cols-[0.9fr_0.6fr_0.7fr_0.7fr_0.7fr_0.7fr] items-center border-t border-sand-200 px-4 py-4 text-sm font-semibold text-ink-500"
                   >
                     <span className="font-semibold text-ink-500">{record.date}</span>
                     <span className="text-ink-400">{record.hours.toFixed(1)}</span>
@@ -1311,7 +1356,7 @@ export default function AdminDashboard() {
               </div>
               <p className="mt-2 text-xs text-ink-300">Global matches this month: {globalLeaveRows.length}</p>
               <div className="mt-3 overflow-hidden rounded-2xl border border-sand-200">
-                <div className="grid grid-cols-[1fr_0.8fr_0.6fr_0.6fr] bg-sand-50 px-4 py-3 text-xs uppercase tracking-[0.2em] text-ink-300">
+                <div className="grid grid-cols-[1fr_0.8fr_0.6fr_0.6fr] bg-sand-50 px-4 py-4 text-xs uppercase tracking-[0.2em] text-ink-500 font-semibold border-b border-sand-200">
                   <span>Type</span>
                   <span>Date Range</span>
                   <span>Days</span>
@@ -1322,7 +1367,7 @@ export default function AdminDashboard() {
                     type="button"
                     key={leave.id}
                     onClick={() => setSelectedLeaveId(leave.id)}
-                    className={`grid w-full grid-cols-[1fr_0.8fr_0.6fr_0.6fr] items-center border-t border-sand-100 px-4 py-3 text-left text-sm transition ${
+                    className={`grid w-full grid-cols-[1fr_0.8fr_0.6fr_0.6fr] items-center border-t border-sand-200 px-4 py-4 text-left text-sm font-semibold text-ink-500 transition ${
                       selectedLeaveId === leave.id ? 'bg-brand-50/80' : 'hover:bg-sand-50/80'
                     }`}
                   >
@@ -2069,7 +2114,7 @@ export default function AdminDashboard() {
                         <p className="text-xl font-bold text-ink-500">{userStats.totalHours.toFixed(1)}</p>
                       </div>
                       <div>
-                        <p className="text-ink-400">9h Compliance</p>
+                        <p className="text-ink-400">Compliance</p>
                         <p className="text-xl font-bold text-brand-600">{userStats.compliance}%</p>
                       </div>
                     </div>

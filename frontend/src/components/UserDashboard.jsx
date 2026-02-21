@@ -96,7 +96,7 @@ export default function UserDashboard() {
   const userTotalDays = loggedUserAttendance.length
   const userTotalHours = loggedUserAttendance.reduce((sum, record) => sum + record.hours, 0)
   const userAvgHours = userTotalDays ? (userTotalHours / userTotalDays).toFixed(1) : 0
-  const userComplianceDays = loggedUserAttendance.filter((rec) => rec.hours >= 9).length
+  const userComplianceDays = loggedUserAttendance.filter((rec) => rec.hours >= 4.5).length
   const userComplianceRate = userTotalDays ? Math.round((userComplianceDays / userTotalDays) * 100) : 0
   const userTotalMails = loggedUserAttendance.reduce((sum, rec) => sum + rec.mails, 0)
   const userTotalData = loggedUserAttendance.reduce((sum, rec) => sum + rec.data, 0)
@@ -351,8 +351,8 @@ export default function UserDashboard() {
   }
 
   return (
-    <div className="min-h-screen p-6 md:p-10">
-      <div className="mx-auto max-w-5xl">
+    <div className="min-h-screen p-6 md:p-10 flex justify-center">
+      <div className="w-full max-w-5xl">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-sm uppercase tracking-[0.3em] text-ink-300">CIO Mogul</p>
@@ -632,7 +632,7 @@ export default function UserDashboard() {
           <section className="glass-panel rounded-3xl p-6 shadow-lift">
             <h3 className="text-sm font-semibold text-ink-500">My Tru Time Records</h3>
             <div className="mt-3 overflow-hidden rounded-2xl border border-sand-200">
-              <div className="grid grid-cols-[0.9fr_0.6fr_0.7fr_0.7fr_0.7fr_0.7fr] bg-sand-50 px-4 py-3 text-xs uppercase tracking-[0.2em] text-ink-300">
+              <div className="grid grid-cols-[0.9fr_0.6fr_0.7fr_0.7fr_0.7fr_0.7fr] bg-sand-50 px-4 py-4 text-xs uppercase tracking-[0.2em] text-ink-500 font-semibold border-b border-sand-200">
                 <span>Date</span>
                 <span>Hours</span>
                 <span>Mails</span>
@@ -643,7 +643,7 @@ export default function UserDashboard() {
               {loggedUserAttendance.map((record) => (
                 <div
                   key={`${record.userId}-${record.date}`}
-                  className="grid grid-cols-[0.9fr_0.6fr_0.7fr_0.7fr_0.7fr_0.7fr] items-center border-t border-sand-100 px-4 py-3 text-sm"
+                  className="grid grid-cols-[0.9fr_0.6fr_0.7fr_0.7fr_0.7fr_0.7fr] items-center border-t border-sand-200 px-4 py-4 text-sm font-semibold text-ink-500"
                 >
                   <span className="font-semibold text-ink-500">{record.date}</span>
                   <span className="text-ink-400">{record.hours.toFixed(1)}</span>
@@ -748,7 +748,7 @@ export default function UserDashboard() {
           <section className="glass-panel rounded-3xl p-6 shadow-lift">
             <h3 className="text-sm font-semibold text-ink-500">My Leave Requests</h3>
             <div className="mt-3 overflow-hidden rounded-2xl border border-sand-200">
-              <div className="grid grid-cols-[1fr_0.8fr_0.6fr_0.6fr_0.6fr] bg-sand-50 px-4 py-3 text-xs uppercase tracking-[0.2em] text-ink-300">
+              <div className="grid grid-cols-[1fr_0.8fr_0.6fr_0.6fr_0.6fr] bg-sand-50 px-4 py-4 text-xs uppercase tracking-[0.2em] text-ink-500 font-semibold border-b border-sand-200">
                 <span>Type</span>
                 <span>Date Range</span>
                 <span>Days</span>
@@ -765,7 +765,7 @@ export default function UserDashboard() {
                 return (
                   <div
                     key={leave.id}
-                    className="grid grid-cols-[1fr_0.8fr_0.6fr_0.6fr_0.6fr] items-center border-t border-sand-100 px-4 py-3 text-sm"
+                    className="grid grid-cols-[1fr_0.8fr_0.6fr_0.6fr_0.6fr] items-center border-t border-sand-200 px-4 py-4 text-sm font-semibold text-ink-500"
                   >
                     <span className="font-semibold text-ink-500">{leave.type}</span>
                     <span className="text-ink-400">

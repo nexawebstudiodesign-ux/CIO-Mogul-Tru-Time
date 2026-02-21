@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { apiService } from '../utils/api'
+import { useApp } from '../context/useApp'
 
 export default function Login() {
   const navigate = useNavigate()
+  const { setLoggedUser, setLoggedUserId, setIsAdminAuthorized } = useApp()
   const [loginInput, setLoginInput] = useState({ employeeId: '', password: '' })
   const [loginError, setLoginError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -16,6 +18,10 @@ export default function Login() {
     try {
       const response = await apiService.login(loginInput.employeeId, loginInput.password)
       localStorage.setItem('ciomogul_user_id', response.user.id)
+      localStorage.setItem('ciomogul_user', JSON.stringify(response.user))
+      setLoggedUser(response.user)
+      setLoggedUserId(response.user.id)
+      setIsAdminAuthorized(response.user.role === 'ADMIN')
       navigate('/user')
     } catch (error) {
       setLoginError(error.message || 'Invalid credentials. Please try again.')

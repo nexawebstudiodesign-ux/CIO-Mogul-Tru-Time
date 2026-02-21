@@ -114,7 +114,7 @@ export class ReportsService {
       const userAttendance = attendanceByUser.get(user.id) ?? [];
       const entries = userAttendance.length;
       const totalHours = userAttendance.reduce((sum, row) => sum + (Number(row.total_minutes || 0) / 60), 0);
-      const compliantDays = userAttendance.filter((row) => Number(row.total_minutes || 0) >= 540).length;
+      const compliantDays = userAttendance.filter((row) => Number(row.total_minutes || 0) >= 270).length;
       const compliance = entries > 0 ? Math.round((compliantDays / entries) * 100) : 0;
 
       const salary = salaryByUser.get(user.id);

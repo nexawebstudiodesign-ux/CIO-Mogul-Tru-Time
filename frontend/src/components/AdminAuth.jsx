@@ -7,7 +7,6 @@ export default function AdminAuth() {
   const navigate = useNavigate()
   const { setIsAdminAuthorized, setLoggedUser, setLoggedUserId } = useApp()
 
-  const [employeeId, setEmployeeId] = useState('')
   const [password, setPassword] = useState('')
   const [authError, setAuthError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -18,7 +17,7 @@ export default function AdminAuth() {
     setLoading(true)
 
     try {
-      const data = await apiService.login(employeeId, password)
+      const data = await apiService.adminPasswordLogin(password)
 
       if (data.user?.role !== 'ADMIN') {
         throw new Error('Access denied. Not an admin.')
@@ -44,22 +43,14 @@ export default function AdminAuth() {
           </p>
           <h1 className="section-title mt-3">Admin Login</h1>
           <p className="mt-2 text-sm text-ink-300">
-            Sign in using your Employee ID and password.
+            Enter the admin password to access the dashboard.
           </p>
 
           <form className="mt-6 space-y-4" onSubmit={handleLogin}>
             <input
               className="input-field"
-              placeholder="Employee ID"
-              value={employeeId}
-              onChange={(e) => setEmployeeId(e.target.value)}
-              required
-            />
-
-            <input
-              className="input-field"
               type="password"
-              placeholder="Password"
+              placeholder="Admin password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required

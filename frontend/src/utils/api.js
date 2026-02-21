@@ -84,6 +84,20 @@ class ApiService {
     })
   }
 
+  async adminPasswordLogin(password) {
+    const data = await this.request('/auth/admin-password-login', {
+      method: 'POST',
+      body: JSON.stringify({ password }),
+    })
+
+    if (data.accessToken) {
+      localStorage.setItem('access_token', data.accessToken)
+      localStorage.setItem('ciomogul_user', JSON.stringify(data.user))
+    }
+
+    return data
+  }
+
   // ========================
   // USERS
   // ========================

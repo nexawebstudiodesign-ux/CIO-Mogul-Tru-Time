@@ -127,7 +127,7 @@ export function AppProvider({ children }) {
       const entries = records.length
       const totalHours = records.reduce((sum, record) => sum + record.hours, 0)
       const avgHours = entries ? totalHours / entries : 0
-      const complianceCount = records.filter((record) => record.hours >= 9).length
+      const complianceCount = records.filter((record) => record.hours >= 4.5).length
       const compliance = entries ? Math.round((complianceCount / entries) * 100) : 0
       return {
         ...user,
