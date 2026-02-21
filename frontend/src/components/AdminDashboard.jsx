@@ -23,6 +23,9 @@ export default function AdminDashboard() {
     selectedMonth,
     setSelectedMonth,
     setIsAdminAuthorized,
+    showToast,
+    publicHolidays,
+    setPublicHolidays,
   } = useApp()
 
   const [selectedUserId, setSelectedUserId] = useState(users[0]?.id ?? '')
@@ -66,6 +69,9 @@ export default function AdminDashboard() {
     otherDeduction: '',
   })
   const [salaryFormErrors, setSalaryFormErrors] = useState({})
+  const [holidayForm, setHolidayForm] = useState({ date: '', description: '' })
+  const [holidayFormErrors, setHolidayFormErrors] = useState({})
+  const [selectedHolidayId, setSelectedHolidayId] = useState('')
   const [userSearch, setUserSearch] = useState('')
   const [leaveStatusFilter, setLeaveStatusFilter] = useState('All')
   const [leaveSearch, setLeaveSearch] = useState('')
@@ -158,6 +164,22 @@ export default function AdminDashboard() {
       followUps: record?.followUps ?? record?.follow_up_count ?? 0,
     }
   }
+
+  const validateHolidayForm = () => {
+    const errors = {}
+    if (!holidayForm.date) {
+      errors.date = 'Holiday date is required.'
+    }
+    if (!holidayForm.description.trim()) {
+      errors.description = 'Description is required.'
+    }
+    return errors
+  }
+
+  const sortedHolidays = useMemo(() => {
+    const list = Array.isArray(publicHolidays) ? [...publicHolidays] : []
+    return list.sort((a, b) => String(a.date).localeCompare(String(b.date)))
+  }, [publicHolidays])
 
   // Fetch data from backend on mount
   useEffect(() => {
@@ -366,6 +388,13 @@ export default function AdminDashboard() {
       user.avgHours.toFixed(1),
       user.compliance,
     ])
+    if (rows.length === 0) {
+      alert('No user summary data to export for this month.')
+      return
+    }
+    if (!window.confirm('Export user summary CSV for the selected month?')) {
+      return
+    }
     const csv = [headers, ...rows]
       .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
       .join('\n')
@@ -390,6 +419,13 @@ export default function AdminDashboard() {
       leave.days,
       leave.status,
     ])
+    if (rows.length === 0) {
+      alert('No leave data to export for this month.')
+      return
+    }
+    if (!window.confirm('Export leave CSV for the selected month?')) {
+      return
+    }
     const csv = [headers, ...rows]
       .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
       .join('\n')
@@ -417,6 +453,13 @@ export default function AdminDashboard() {
         record.followUps,
       ]
     })
+    if (rows.length === 0) {
+      alert('No attendance data to export for this month.')
+      return
+    }
+    if (!window.confirm('Export attendance CSV for the selected month?')) {
+      return
+    }
     const csv = [headers, ...rows]
       .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
       .join('\n')
@@ -456,6 +499,13 @@ export default function AdminDashboard() {
           net,
         ]
       })
+    if (rows.length === 0) {
+      alert('No salary data to export for this month.')
+      return
+    }
+    if (!window.confirm('Export salary CSV for the selected month?')) {
+      return
+    }
     const csv = [headers, ...rows]
       .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
       .join('\n')
@@ -648,6 +698,7 @@ export default function AdminDashboard() {
     }
 
     try {
+      let toastMessage = ''
       if (modalMode === 'add') {
         const userData = {
           name: `${userForm.firstName.trim()} ${userForm.lastName.trim()}`,
@@ -665,6 +716,7 @@ export default function AdminDashboard() {
           employeeId: newUser.employeeId,
           password: userForm.password,
         })
+        toastMessage = 'User created successfully.'
       }
       if (modalMode === 'edit') {
         const userData = {
@@ -677,15 +729,23 @@ export default function AdminDashboard() {
         if (userForm.password.trim()) {
           await apiService.resetPassword(selectedUserId, userForm.password)
           savePasswordForUser(selectedUserId, userForm.password)
+          toastMessage = 'User updated and password reset.'
         }
         setUsers((prev) =>
           prev.map((user) => (user.id === selectedUserId ? updatedUser : user))
         )
+        if (!toastMessage) {
+          toastMessage = 'User updated successfully.'
+        }
       }
       setShowUserModal(false)
+      if (toastMessage) {
+        showToast(toastMessage, 'success')
+      }
     } catch (error) {
       console.error('Failed to save user:', error)
       setUserFormErrors({ general: error.message || 'Failed to save user' })
+      showToast(error.message || 'Failed to save user', 'error')
     }
   }
 
@@ -717,9 +777,11 @@ export default function AdminDashboard() {
       const remaining = users.filter((user) => user.id !== selectedUserId && user.isActive !== false)
       setSelectedUserId(remaining[0]?.id ?? '')
       setShowUserModal(false)
+      showToast('User moved to recycle bin.', 'success')
     } catch (error) {
       console.error('Failed to delete user:', error)
       setUserFormErrors({ general: error.message || 'Failed to delete user' })
+      showToast(error.message || 'Failed to delete user', 'error')
     }
   }
 
@@ -729,8 +791,10 @@ export default function AdminDashboard() {
       const normalized = normalizeUser(restoredUser)
       setUsers((prev) => prev.map((user) => (user.id === userId ? normalized : user)))
       setSelectedUserId(userId)
+      showToast('User restored successfully.', 'success')
     } catch (error) {
       console.error('Failed to restore user:', error)
+      showToast(error.message || 'Failed to restore user', 'error')
     }
   }
 
@@ -743,6 +807,7 @@ export default function AdminDashboard() {
     }
 
     try {
+      let toastMessage = ''
       if (modalMode === 'add') {
         const leaveData = {
           userId: leaveForm.userId,
@@ -754,6 +819,7 @@ export default function AdminDashboard() {
         const newLeave = await apiService.adminCreateLeave(leaveData)
         setLeaves((prev) => [newLeave, ...prev])
         setSelectedLeaveId(newLeave.id)
+        toastMessage = 'Leave added successfully.'
       }
       if (modalMode === 'edit') {
         if (!selectedLeaveId) {
@@ -771,11 +837,16 @@ export default function AdminDashboard() {
         setLeaves((prev) =>
           prev.map((leave) => (leave.id === selectedLeaveId ? updatedLeave : leave))
         )
+        toastMessage = 'Leave updated successfully.'
       }
       setShowLeaveModal(false)
+      if (toastMessage) {
+        showToast(toastMessage, 'success')
+      }
     } catch (error) {
       console.error('Failed to save leave:', error)
       setLeaveFormErrors({ general: error.message || 'Failed to save leave' })
+      showToast(error.message || 'Failed to save leave', 'error')
     }
   }
 
@@ -791,9 +862,11 @@ export default function AdminDashboard() {
       const remaining = leaves.filter((leave) => leave.id !== selectedLeaveId)
       setSelectedLeaveId(remaining[0]?.id ?? '')
       setShowLeaveModal(false)
+      showToast('Leave deleted successfully.', 'success')
     } catch (error) {
       console.error('Failed to delete leave:', error)
       setLeaveFormErrors({ general: error.message || 'Failed to delete leave' })
+      showToast(error.message || 'Failed to delete leave', 'error')
     }
   }
 
@@ -817,8 +890,10 @@ export default function AdminDashboard() {
       // Refresh users to get updated leave balances
       const usersData = await apiService.getUsers()
       setUsers(usersData)
+      showToast('Leave approved successfully.', 'success')
     } catch (error) {
       console.error('Failed to approve leave:', error)
+      showToast(error.message || 'Failed to approve leave', 'error')
     }
   }
 
@@ -834,8 +909,77 @@ export default function AdminDashboard() {
           item.id === selectedLeaveId ? { ...item, status: 'Rejected' } : item
         )
       )
+      showToast('Leave rejected successfully.', 'success')
     } catch (error) {
       console.error('Failed to reject leave:', error)
+      showToast(error.message || 'Failed to reject leave', 'error')
+    }
+  }
+
+  const handleHolidayEdit = (holiday) => {
+    setSelectedHolidayId(holiday.id)
+    setHolidayForm({
+      date: holiday.date ?? '',
+      description: holiday.description ?? '',
+    })
+    setHolidayFormErrors({})
+  }
+
+  const handleHolidayReset = () => {
+    setSelectedHolidayId('')
+    setHolidayForm({ date: '', description: '' })
+    setHolidayFormErrors({})
+  }
+
+  const handleHolidaySubmit = async (event) => {
+    event.preventDefault()
+    const errors = validateHolidayForm()
+    setHolidayFormErrors(errors)
+    if (Object.keys(errors).length > 0) {
+      return
+    }
+
+    try {
+      if (selectedHolidayId) {
+        const updated = await apiService.updateHoliday(selectedHolidayId, {
+          date: holidayForm.date,
+          description: holidayForm.description.trim(),
+        })
+        setPublicHolidays((prev) =>
+          prev.map((holiday) => (holiday.id === selectedHolidayId ? updated : holiday))
+        )
+        showToast('Holiday updated successfully.', 'success')
+      } else {
+        const created = await apiService.createHoliday({
+          date: holidayForm.date,
+          description: holidayForm.description.trim(),
+        })
+        setPublicHolidays((prev) => [created, ...prev])
+        showToast('Holiday added successfully.', 'success')
+      }
+      handleHolidayReset()
+    } catch (error) {
+      console.error('Failed to save holiday:', error)
+      showToast(error.message || 'Failed to save holiday', 'error')
+    }
+  }
+
+  const handleHolidayDelete = async (holidayId) => {
+    const holiday = publicHolidays.find((item) => item.id === holidayId)
+    if (!holiday) return
+    if (!window.confirm(`Delete holiday on ${holiday.date}?`)) {
+      return
+    }
+    try {
+      await apiService.deleteHoliday(holidayId)
+      setPublicHolidays((prev) => prev.filter((item) => item.id !== holidayId))
+      if (selectedHolidayId === holidayId) {
+        handleHolidayReset()
+      }
+      showToast('Holiday deleted.', 'success')
+    } catch (error) {
+      console.error('Failed to delete holiday:', error)
+      showToast(error.message || 'Failed to delete holiday', 'error')
     }
   }
 
@@ -870,15 +1014,18 @@ export default function AdminDashboard() {
         setMonthlySalaries((prev) =>
           prev.map((s) => (s.id === existing.id ? updatedSalary : s))
         )
+        showToast('Salary updated successfully.', 'success')
       } else {
         const newSalary = await apiService.createSalary(salaryData)
         setMonthlySalaries((prev) => [newSalary, ...prev])
+        showToast('Salary created successfully.', 'success')
       }
       setShowSalaryModal(false)
       setSalaryFormErrors({})
     } catch (error) {
       console.error('Failed to save salary:', error)
       setSalaryFormErrors({ general: error.message || 'Failed to save salary. Please try again.' })
+      showToast(error.message || 'Failed to save salary', 'error')
     }
   }
 
@@ -888,8 +1035,10 @@ export default function AdminDashboard() {
       setReportMessage('')
       await apiService.downloadMonthlySummaryReportCsv(selectedMonth)
       setReportMessage('Monthly report downloaded.')
+      showToast('Monthly report downloaded.', 'success')
     } catch (error) {
       setReportMessage(error.message || 'Failed to download monthly report')
+      showToast(error.message || 'Failed to download monthly report', 'error')
     } finally {
       setReportBusy(false)
     }
@@ -898,6 +1047,7 @@ export default function AdminDashboard() {
   const handleEmailMonthlyReport = async () => {
     if (!reportEmail.trim()) {
       setReportMessage('Enter email address first')
+      showToast('Enter email address first', 'warning')
       return
     }
     try {
@@ -905,8 +1055,10 @@ export default function AdminDashboard() {
       setReportMessage('')
       await apiService.emailMonthlySummaryReport(selectedMonth, reportEmail.trim())
       setReportMessage(`Report sent to ${reportEmail.trim()}`)
+      showToast(`Report sent to ${reportEmail.trim()}`, 'success')
     } catch (error) {
       setReportMessage(error.message || 'Failed to send report email')
+      showToast(error.message || 'Failed to send report email', 'error')
     } finally {
       setReportBusy(false)
     }
@@ -1236,6 +1388,97 @@ export default function AdminDashboard() {
                     </button>
                   </div>
                   {reportMessage && <p className="text-xs text-ink-400">{reportMessage}</p>}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-sand-200 p-4 mb-6 bg-white/70">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold text-ink-500">Public Holidays</h3>
+                    <p className="text-xs text-ink-300 mt-1">Visible to all users</p>
+                  </div>
+                  {selectedHolidayId && (
+                    <span className="pill bg-amber-100 text-amber-700">Editing</span>
+                  )}
+                </div>
+                <form className="mt-3 grid gap-2 sm:grid-cols-[0.6fr_1fr_auto]" onSubmit={handleHolidaySubmit}>
+                  <div>
+                    <input
+                      type="date"
+                      value={holidayForm.date}
+                      onChange={(event) =>
+                        setHolidayForm((prev) => ({ ...prev, date: event.target.value }))
+                      }
+                      className="w-full rounded-lg border border-sand-200 bg-white px-3 py-2 text-xs text-ink-500"
+                    />
+                    {holidayFormErrors.date && (
+                      <p className="mt-1 text-xs text-red-500">{holidayFormErrors.date}</p>
+                    )}
+                  </div>
+                  <div>
+                    <input
+                      type="text"
+                      value={holidayForm.description}
+                      onChange={(event) =>
+                        setHolidayForm((prev) => ({ ...prev, description: event.target.value }))
+                      }
+                      placeholder="Holiday description"
+                      className="w-full rounded-lg border border-sand-200 bg-white px-3 py-2 text-xs text-ink-500"
+                    />
+                    {holidayFormErrors.description && (
+                      <p className="mt-1 text-xs text-red-500">{holidayFormErrors.description}</p>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="submit"
+                      className="rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white"
+                    >
+                      {selectedHolidayId ? 'Update' : 'Add'}
+                    </button>
+                    {selectedHolidayId && (
+                      <button
+                        type="button"
+                        onClick={handleHolidayReset}
+                        className="rounded-lg border border-sand-200 px-3 py-2 text-xs font-semibold text-ink-500"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                </form>
+                <div className="mt-3 space-y-2">
+                  {sortedHolidays.length === 0 ? (
+                    <p className="text-xs text-ink-300">No public holidays added yet.</p>
+                  ) : (
+                    sortedHolidays.map((holiday) => (
+                      <div
+                        key={holiday.id}
+                        className="flex items-center justify-between rounded-xl border border-sand-200 bg-white/70 px-3 py-2"
+                      >
+                        <div>
+                          <p className="text-xs font-semibold text-ink-500">{holiday.date}</p>
+                          <p className="text-xs text-ink-300">{holiday.description}</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleHolidayEdit(holiday)}
+                            className="rounded-lg border border-sand-200 px-3 py-1 text-xs font-semibold text-ink-500"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleHolidayDelete(holiday.id)}
+                            className="rounded-lg bg-red-600 px-3 py-1 text-xs font-semibold text-white"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
 

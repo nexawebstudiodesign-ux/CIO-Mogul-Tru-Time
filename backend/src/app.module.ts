@@ -9,6 +9,7 @@ import { AttendanceModule } from './attendance/attendance.module';
 import { LeaveModule } from './leave/leave.module';
 import { SalaryModule } from './salary/salary.module';
 import { ReportsModule } from './reports/reports.module';
+import { HolidaysModule } from './holidays/holidays.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { ReportsModule } from './reports/reports.module';
     LeaveModule,
     SalaryModule,
     ReportsModule,
+    HolidaysModule,
   ],
   controllers: [AppController],
   providers: [AppService],

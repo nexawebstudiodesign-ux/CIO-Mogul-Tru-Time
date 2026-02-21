@@ -84,11 +84,22 @@ create table if not exists public.monthly_salaries (
 create index if not exists monthly_salaries_user_id_idx on public.monthly_salaries (user_id);
 create index if not exists monthly_salaries_month_idx on public.monthly_salaries (month);
 
+-- Public Holidays
+create table if not exists public.public_holidays (
+  id uuid primary key default gen_random_uuid(),
+  date date not null unique,
+  description text not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists public_holidays_date_idx on public.public_holidays (date);
+
 -- RLS
 alter table public.users enable row level security;
 alter table public.attendance enable row level security;
 alter table public.leaves enable row level security;
 alter table public.monthly_salaries enable row level security;
+alter table public.public_holidays enable row level security;
 
 -- Service role bypasses RLS
 create policy "users_service_role" on public.users
@@ -107,6 +118,11 @@ create policy "leaves_service_role" on public.leaves
   with check (auth.role() = 'service_role');
 
 create policy "monthly_salaries_service_role" on public.monthly_salaries
+  for all
+  using (auth.role() = 'service_role')
+  with check (auth.role() = 'service_role');
+
+create policy "public_holidays_service_role" on public.public_holidays
   for all
   using (auth.role() = 'service_role')
   with check (auth.role() = 'service_role');

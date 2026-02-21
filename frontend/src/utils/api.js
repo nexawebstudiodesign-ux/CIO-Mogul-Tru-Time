@@ -177,6 +177,34 @@ class ApiService {
   }
 
   // ========================
+  // PUBLIC HOLIDAYS
+  // ========================
+
+  async getHolidays() {
+    return this.request('/holidays')
+  }
+
+  async createHoliday(holidayData) {
+    return this.request('/holidays', {
+      method: 'POST',
+      body: JSON.stringify(holidayData),
+    })
+  }
+
+  async updateHoliday(holidayId, holidayData) {
+    return this.request(`/holidays/${holidayId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(holidayData),
+    })
+  }
+
+  async deleteHoliday(holidayId) {
+    return this.request(`/holidays/${holidayId}`, {
+      method: 'DELETE',
+    })
+  }
+
+  // ========================
   // LEAVE
   // ========================
 

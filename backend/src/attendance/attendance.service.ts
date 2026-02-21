@@ -6,15 +6,6 @@ import { QueryAttendanceDto } from './dto/query-attendance.dto';
 @Injectable()
 export class AttendanceService {
   private readonly MAX_DAYS_OLD = 7; // Configurable: maximum days old for attendance marking
-  
-  // Configurable holidays (YYYY-MM-DD format)
-  private readonly holidays: string[] = [
-    '2026-01-26', // Republic Day
-    '2026-08-15', // Independence Day
-    '2026-10-02', // Gandhi Jayanti
-    '2026-12-25', // Christmas
-    // Add more holidays as needed
-  ];
 
   constructor(private supabaseService: SupabaseService) {}
 
@@ -39,7 +30,7 @@ export class AttendanceService {
     }
     
     // Validation 4: Cannot mark attendance for holidays
-    if (this.isHoliday(date)) {
+    if (await this.isHoliday(date)) {
       throw new BadRequestException('Cannot mark attendance for holidays');
     }
 
@@ -141,8 +132,16 @@ export class AttendanceService {
   }
 
   // Helper method to check if date is a holiday
-  private isHoliday(dateString: string): boolean {
-    return this.holidays.includes(dateString);
+  private async isHoliday(dateString: string): Promise<boolean> {
+    const { data, error } = await this.supabaseService.client
+      .from('public_holidays')
+      .select('id')
+      .eq('date', dateString)
+      .maybeSingle();
+    if (error) {
+      throw new BadRequestException('Unable to validate attendance date');
+    }
+    return !!data;
   }
 
   // Helper method to calculate days difference between two dates

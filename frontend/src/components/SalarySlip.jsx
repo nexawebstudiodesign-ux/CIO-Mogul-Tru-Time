@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useApp } from '../context/useApp'
 
 export default function SalarySlip() {
-  const { loggedUser, loggedUserId, attendance, monthlySalaries, currentMonth } = useApp()
+  const { loggedUser, loggedUserId, attendance, monthlySalaries, currentMonth, showToast } = useApp()
   const [salarySlipMonth, setSalarySlipMonth] = useState(currentMonth)
 
   const monthYear = new Date(salarySlipMonth + '-01').toLocaleDateString('en-US', {
@@ -140,7 +140,10 @@ export default function SalarySlip() {
                 ← Back to Dashboard
               </a>
               <button
-                onClick={() => window.print()}
+                onClick={() => {
+                  showToast('Preparing your salary slip for print.', 'info')
+                  window.print()
+                }}
                 className="rounded-xl bg-brand-600 px-6 py-2 text-sm font-semibold text-white shadow hover:bg-brand-700"
               >
                 Print / Save as PDF (Ctrl+P)

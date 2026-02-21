@@ -19,6 +19,8 @@ export default function UserDashboard() {
     setSelectedMonth,
     filteredAttendance,
     filteredLeaves,
+    showToast,
+    publicHolidays,
   } = useApp()
 
   const [userAttendanceForm, setUserAttendanceForm] = useState({
@@ -36,13 +38,20 @@ export default function UserDashboard() {
   const [userLeaveErrors, setUserLeaveErrors] = useState({})
   const [activeTab, setActiveTab] = useState('trutime')
 
-  // Configurable holidays (should match backend)
-  const holidays = [
-    '2026-01-26', // Republic Day
-    '2026-08-15', // Independence Day
-    '2026-10-02', // Gandhi Jayanti
-    '2026-12-25', // Christmas
-  ]
+  const holidayLookup = useMemo(() => {
+    const map = new Map()
+    if (Array.isArray(publicHolidays)) {
+      publicHolidays.forEach((holiday) => {
+        map.set(holiday.date, holiday.description)
+      })
+    }
+    return map
+  }, [publicHolidays])
+
+  const sortedHolidays = useMemo(() => {
+    const list = Array.isArray(publicHolidays) ? [...publicHolidays] : []
+    return list.sort((a, b) => String(a.date).localeCompare(String(b.date)))
+  }, [publicHolidays])
 
   // Helper function to check if date is weekend
   const isWeekend = (dateString) => {
@@ -55,7 +64,7 @@ export default function UserDashboard() {
   // Helper function to check if date is holiday
   const isHoliday = (dateString) => {
     if (!dateString) return false
-    return holidays.includes(dateString)
+    return holidayLookup.has(dateString)
   }
 
   // Helper function to get date status message
@@ -65,7 +74,13 @@ export default function UserDashboard() {
       return { type: 'weekend', message: 'Weekend - Attendance cannot be marked' }
     }
     if (isHoliday(dateString)) {
-      return { type: 'holiday', message: 'Holiday - Attendance cannot be marked' }
+      const description = holidayLookup.get(dateString)
+      return {
+        type: 'holiday',
+        message: description
+          ? `Holiday - ${description} (attendance cannot be marked)`
+          : 'Holiday - Attendance cannot be marked',
+      }
     }
     const selectedDate = new Date(dateString + 'T00:00:00')
     const today = new Date()
@@ -274,9 +289,11 @@ export default function UserDashboard() {
         linkedin: '',
         followUps: '',
       })
+      showToast('Attendance submitted successfully.', 'success')
     } catch (error) {
       console.error('Failed to submit attendance:', error)
       setUserAttendanceErrors({ general: error.message || 'Failed to submit attendance' })
+      showToast(error.message || 'Failed to submit attendance', 'error')
     }
   }
 
@@ -305,9 +322,11 @@ export default function UserDashboard() {
       const updatedUser = await apiService.getMe()
       setLoggedUser(updatedUser)
       localStorage.setItem('ciomogul_user', JSON.stringify(updatedUser))
+      showToast('Leave request submitted successfully.', 'success')
     } catch (error) {
       console.error('Failed to apply leave:', error)
       setUserLeaveErrors({ general: error.message || 'Failed to apply leave. Please try again.' })
+      showToast(error.message || 'Failed to apply leave', 'error')
     }
   }
 
@@ -324,9 +343,10 @@ export default function UserDashboard() {
       const updatedUser = await apiService.getMe()
       setLoggedUser(updatedUser)
       localStorage.setItem('ciomogul_user', JSON.stringify(updatedUser))
+      showToast('Leave canceled successfully.', 'success')
     } catch (error) {
       console.error('Failed to cancel leave:', error)
-      alert(error.message || 'Failed to cancel leave. Please try again.')
+      showToast(error.message || 'Failed to cancel leave', 'error')
     }
   }
 
@@ -623,6 +643,32 @@ export default function UserDashboard() {
                 Submit Tru Time
               </button>
             </form>
+          </section>
+        </div>
+        )}
+
+        {activeTab === 'trutime' && (
+        <div className="mt-6 grid gap-6">
+          <section className="glass-panel rounded-3xl p-6 shadow-lift">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-ink-500">Public Holidays</h3>
+              <span className="pill bg-sand-100 text-ink-400">{sortedHolidays.length} days</span>
+            </div>
+            <div className="mt-3 space-y-2">
+              {sortedHolidays.length === 0 ? (
+                <p className="text-sm text-ink-300">No public holidays configured yet.</p>
+              ) : (
+                sortedHolidays.map((holiday) => (
+                  <div
+                    key={holiday.id}
+                    className="flex items-center justify-between rounded-xl border border-sand-200 bg-white/70 px-3 py-2"
+                  >
+                    <p className="text-sm font-semibold text-ink-500">{holiday.date}</p>
+                    <p className="text-xs text-ink-300">{holiday.description}</p>
+                  </div>
+                ))
+              )}
+            </div>
           </section>
         </div>
         )}

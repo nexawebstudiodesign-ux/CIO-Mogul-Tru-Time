@@ -18,6 +18,8 @@ export function AppProvider({ children }) {
   const [selectedMonth, setSelectedMonth] = useState(currentMonth)
   const [selectedUserId, setSelectedUserId] = useState(initialUsers[0]?.id ?? '')
   const [selectedLeaveId, setSelectedLeaveId] = useState(initialLeaves[0]?.id ?? '')
+  const [publicHolidays, setPublicHolidays] = useState([])
+  const [toasts, setToasts] = useState([])
 
   // User auth - initialize from localStorage (access_token + ciomogul_user)
   const [loggedUserId, setLoggedUserId] = useState(localStorage.getItem('ciomogul_user_id') || '')
@@ -51,6 +53,13 @@ export function AppProvider({ children }) {
         localStorage.setItem('ciomogul_user', JSON.stringify(userData))
         localStorage.setItem('ciomogul_user_id', userData.id ?? '')
         setIsAdminAuthorized(userData.role === 'ADMIN')
+
+        try {
+          const holidays = await apiService.getHolidays()
+          setPublicHolidays(Array.isArray(holidays) ? holidays : [])
+        } catch (holidayError) {
+          console.error('Failed to load holidays:', holidayError)
+        }
 
         if (userData.role === 'USER') {
           const [myAttendance, myLeaves, mySalaries] = await Promise.all([
@@ -110,6 +119,26 @@ export function AppProvider({ children }) {
       })
   }, [])
 
+  const dismissToast = (toastId) => {
+    setToasts((prev) => prev.filter((toast) => toast.id !== toastId))
+  }
+
+  const showToast = (message, type = 'success', options = {}) => {
+    if (!message) return
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    const duration = Number.isFinite(options.duration)
+      ? options.duration
+      : type === 'error'
+        ? 4500
+        : 3000
+
+    setToasts((prev) => [...prev, { id, message, type }])
+
+    if (duration > 0) {
+      setTimeout(() => dismissToast(id), duration)
+    }
+  }
+
   // Computed data
   const filteredAttendance = useMemo(
     () => attendance.filter((record) => record.date.startsWith(selectedMonth)),
@@ -164,6 +193,11 @@ export function AppProvider({ children }) {
     filteredLeaves,
     monthSummary,
     currentMonth,
+    publicHolidays,
+    setPublicHolidays,
+    toasts,
+    showToast,
+    dismissToast,
   }
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>
