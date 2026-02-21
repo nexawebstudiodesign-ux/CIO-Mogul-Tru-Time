@@ -44,12 +44,13 @@ export class UsersService {
         email: dto.email,
         employee_id: employeeId,
         password_hash: passwordHash,
+        admin_password: dto.password,
         role: 'USER',
         casual_balance: casualBalance,
         sick_balance: sickBalance,
         is_active: true,
       })
-      .select('id,name,email,employee_id,role,casual_balance,sick_balance,is_active,created_at')
+      .select('id,name,email,employee_id,role,casual_balance,sick_balance,is_active,created_at,admin_password')
       .single();
     if (createError || !user) {
       await this.supabaseService.client.auth.admin.deleteUser(authUser.user.id);
@@ -65,13 +66,14 @@ export class UsersService {
       sickBalance: user.sick_balance,
       isActive: user.is_active,
       createdAt: user.created_at,
+      adminPassword: user.admin_password ?? null,
     };
   }
 
   async listUsers() {
     const { data, error } = await this.supabaseService.client
       .from('users')
-      .select('id,name,email,employee_id,role,casual_balance,sick_balance,is_active,created_at')
+      .select('id,name,email,employee_id,role,casual_balance,sick_balance,is_active,created_at,admin_password')
       .order('created_at', { ascending: false });
     if (error) {
       throw new BadRequestException('Unable to load users');
@@ -86,6 +88,7 @@ export class UsersService {
       sickBalance: user.sick_balance,
       isActive: user.is_active,
       createdAt: user.created_at,
+      adminPassword: user.admin_password ?? null,
     }));
   }
 
@@ -129,7 +132,7 @@ export class UsersService {
       .from('users')
       .update(updatePayload)
       .eq('id', userId)
-      .select('id,name,email,employee_id,role,casual_balance,sick_balance,is_active,created_at')
+      .select('id,name,email,employee_id,role,casual_balance,sick_balance,is_active,created_at,admin_password')
       .single();
     if (updateError || !updated) {
       throw new BadRequestException('Unable to update user');
@@ -144,6 +147,7 @@ export class UsersService {
       sickBalance: updated.sick_balance,
       isActive: updated.is_active,
       createdAt: updated.created_at,
+      adminPassword: updated.admin_password ?? null,
     };
   }
 
@@ -206,7 +210,7 @@ export class UsersService {
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const { error: updateError } = await this.supabaseService.client
       .from('users')
-      .update({ password_hash: passwordHash })
+      .update({ password_hash: passwordHash, admin_password: dto.password })
       .eq('id', userId);
     if (updateError) {
       throw new BadRequestException('Unable to reset password');

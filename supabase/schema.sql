@@ -11,6 +11,7 @@ create table if not exists public.users (
   email text not null unique,
   employee_id text not null unique,
   password_hash text not null,
+  admin_password text,
   role text not null default 'USER' check (role in ('ADMIN', 'USER')),
   casual_balance int not null default 12 check (casual_balance between 0 and 12),
   sick_balance int not null default 12 check (sick_balance between 0 and 12),

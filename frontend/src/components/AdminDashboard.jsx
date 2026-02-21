@@ -121,6 +121,7 @@ export default function AdminDashboard() {
     email: user?.email ?? '',
     casualBalance: user?.casualBalance ?? user?.casual_balance ?? 0,
     sickBalance: user?.sickBalance ?? user?.sick_balance ?? 0,
+    adminPassword: user?.adminPassword ?? user?.admin_password ?? null,
     status:
       user?.status ??
       (user?.isActive === false || user?.is_active === false ? 'Inactive' : 'Active'),
@@ -533,7 +534,7 @@ export default function AdminDashboard() {
           firstName,
           lastName,
           email: user.email,
-          password: savedPasswords[user.id] ?? '',
+          password: user.adminPassword ?? savedPasswords[user.id] ?? '',
           casualBalance: String(user.casualBalance ?? 0),
           sickBalance: String(user.sickBalance ?? 0),
         })
