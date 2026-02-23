@@ -35,9 +35,9 @@ export default function AdminAuth() {
   }
 
   return (
-    <div className="min-h-screen p-6 md:p-10">
+    <div className="app-page page-center">
       <div className="mx-auto max-w-lg">
-        <div className="glass-panel rounded-3xl p-8 shadow-lift">
+        <div className="panel-shell">
           <p className="text-sm uppercase tracking-[0.3em] text-ink-300">
             CIO Mogul
           </p>
@@ -62,7 +62,7 @@ export default function AdminAuth() {
 
             <button
               disabled={loading}
-              className="w-full rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow disabled:opacity-50"
+              className="btn-primary w-full disabled:opacity-50"
             >
               {loading ? 'Signing in...' : 'Enter Dashboard'}
             </button>

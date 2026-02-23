@@ -37,6 +37,26 @@
 }
 
 @layer components {
+  .app-page {
+    @apply min-h-screen p-4 sm:p-6 md:p-10;
+  }
+
+  .page-center {
+    @apply flex items-center justify-center;
+  }
+
+  .panel-shell {
+    @apply glass-panel rounded-3xl p-6 md:p-8 shadow-lift;
+  }
+
+  .dashboard-wrap {
+    @apply w-full max-w-6xl;
+  }
+
+  .toolbar-panel {
+    @apply glass-panel rounded-2xl p-4 shadow-lift;
+  }
+
   .glass-panel {
     background: rgba(255, 255, 255, 0.78);
     backdrop-filter: blur(10px);
@@ -51,6 +71,10 @@
     @apply w-full rounded-xl border border-sand-200 bg-white px-3 py-2 text-sm text-ink-500 shadow-sm outline-none transition;
   }
 
+  .control-input {
+    @apply rounded-lg border border-sand-200 bg-white/80 px-3 py-1 text-sm text-ink-500;
+  }
+
   .input-field:focus {
     box-shadow: 0 0 0 3px var(--ring);
     border-color: #6f94ff;
@@ -58,6 +82,26 @@
 
   .pill {
     @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold;
+  }
+
+  .btn-primary {
+    @apply rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow transition hover:bg-brand-700;
+  }
+
+  .btn-secondary {
+    @apply rounded-xl border border-sand-200 bg-white px-4 py-2 text-sm font-semibold text-ink-400 transition hover:bg-sand-50;
+  }
+
+  .btn-danger {
+    @apply rounded-xl bg-red-500 px-4 py-2 text-sm font-semibold text-white shadow transition hover:bg-red-600;
+  }
+
+  .btn-pill {
+    @apply inline-flex items-center rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-[0.25em];
+  }
+
+  .stat-card {
+    @apply rounded-xl border border-sand-200 bg-white/70 p-4;
   }
 }
 

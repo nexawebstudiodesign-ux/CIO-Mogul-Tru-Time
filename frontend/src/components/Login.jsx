@@ -31,9 +31,9 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen p-6 md:p-10">
+    <div className="app-page page-center">
       <div className="mx-auto max-w-lg">
-        <div className="glass-panel rounded-3xl p-8 shadow-lift">
+        <div className="panel-shell">
           <p className="text-sm uppercase tracking-[0.3em] text-ink-300">CIO Mogul</p>
           <h1 className="section-title mt-3">User Login</h1>
           <p className="mt-2 text-sm text-ink-300">Sign in with your Employee ID and password.</p>
@@ -59,7 +59,7 @@ export default function Login() {
             />
             {loginError && <p className="text-sm text-red-500">{loginError}</p>}
             <button 
-              className="w-full rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow disabled:opacity-50"
+              className="btn-primary w-full disabled:opacity-50"
               disabled={isLoading}
             >
               {isLoading ? 'Signing in...' : 'Sign In'}

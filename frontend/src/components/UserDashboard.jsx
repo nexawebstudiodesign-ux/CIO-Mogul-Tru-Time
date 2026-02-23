@@ -352,14 +352,14 @@ export default function UserDashboard() {
 
   if (!loggedUser) {
     return (
-      <div className="min-h-screen p-6 md:p-10 flex items-center justify-center">
+      <div className="app-page page-center">
         <div className="mx-auto max-w-lg">
-          <div className="glass-panel rounded-3xl p-8 shadow-lift">
+          <div className="panel-shell">
             <p className="text-sm uppercase tracking-[0.3em] text-ink-300">CIO Mogul</p>
             <h1 className="section-title mt-3">User Access</h1>
             <p className="mt-2 text-sm text-ink-300">Please log in to view your dashboard.</p>
             <a
-              className="mt-6 inline-flex items-center rounded-full bg-ink-500 px-5 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-sand-50"
+              className="btn-pill mt-6 bg-ink-500 text-sand-50"
               href="/login"
             >
               Go to Login
@@ -371,7 +371,7 @@ export default function UserDashboard() {
   }
 
   return (
-    <div className="min-h-screen p-6 md:p-10 flex items-center justify-center">
+    <div className="app-page page-center">
       <div className="w-full max-w-5xl">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
@@ -385,16 +385,16 @@ export default function UserDashboard() {
                 apiService.logout()
                 navigate('/')
               }}
-              className="glass-panel rounded-2xl px-4 py-3 shadow-lift text-sm font-semibold text-red-600 hover:bg-red-50"
+              className="btn-danger bg-red-500/90"
             >
               Logout
             </button>
-            <div className="glass-panel rounded-2xl p-4 shadow-lift">
+            <div className="toolbar-panel">
               <div className="flex items-center justify-between gap-3 text-sm">
                 <span className="text-ink-300">Month</span>
                 <input
                   type="month"
-                  className="rounded-lg border border-sand-200 bg-white/80 px-3 py-1 text-sm font-semibold text-ink-500"
+                  className="control-input font-semibold"
                   value={selectedMonth}
                   onChange={(event) => setSelectedMonth(event.target.value)}
                 />
@@ -403,7 +403,7 @@ export default function UserDashboard() {
           </div>
         </div>
 
-        <div className="mt-6 glass-panel rounded-2xl p-2 shadow-lift">
+        <div className="mt-6 toolbar-panel p-2">
           <div className="grid gap-2 sm:grid-cols-3">
             <button
               className={`rounded-xl px-4 py-2 text-sm font-semibold ${
@@ -435,11 +435,11 @@ export default function UserDashboard() {
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {activeTab === 'trutime' && (
             <>
-              <div className="rounded-xl border border-sand-200 bg-white/70 p-4">
+              <div className="stat-card">
                 <p className="text-xs uppercase tracking-wide text-ink-300">Days Worked</p>
                 <p className="mt-1 text-2xl font-bold text-ink-500">{userTotalDays}</p>
               </div>
-              <div className="rounded-xl border border-sand-200 bg-white/70 p-4">
+              <div className="stat-card">
                 <p className="text-xs uppercase tracking-wide text-ink-300">Compliance</p>
                 <p className="mt-1 text-2xl font-bold text-brand-600">{userComplianceRate}%</p>
               </div>
@@ -447,11 +447,11 @@ export default function UserDashboard() {
           )}
           {activeTab === 'leave' && (
             <>
-              <div className="rounded-xl border border-sand-200 bg-white/70 p-4">
+              <div className="stat-card">
                 <p className="text-xs uppercase tracking-wide text-ink-300">Leave Balance</p>
                 <p className="mt-1 text-2xl font-bold text-ink-500">{loggedUser?.leaveBalance || 0}</p>
               </div>
-              <div className="rounded-xl border border-sand-200 bg-white/70 p-4">
+              <div className="stat-card">
                 <p className="text-xs uppercase tracking-wide text-ink-300">Pending / Approved</p>
                 <p className="mt-1 text-2xl font-bold text-brand-600">{pendingLeaveCount} / {approvedLeaveCount}</p>
               </div>
@@ -459,11 +459,11 @@ export default function UserDashboard() {
           )}
           {activeTab === 'salary' && (
             <>
-              <div className="rounded-xl border border-sand-200 bg-white/70 p-4">
+              <div className="stat-card">
                 <p className="text-xs uppercase tracking-wide text-ink-300">Gross Salary</p>
                 <p className="mt-1 text-2xl font-bold text-ink-500">₹{grossSalary.toLocaleString()}</p>
               </div>
-              <div className="rounded-xl border border-sand-200 bg-white/70 p-4">
+              <div className="stat-card">
                 <p className="text-xs uppercase tracking-wide text-ink-300">Net Salary</p>
                 <p className="mt-1 text-2xl font-bold text-brand-600">₹{netSalary.toLocaleString()}</p>
               </div>

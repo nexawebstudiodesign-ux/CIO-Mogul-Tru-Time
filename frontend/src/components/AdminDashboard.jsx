@@ -1090,7 +1090,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen p-6 md:p-10 flex items-center justify-center">
+    <div className="app-page page-center">
       {isLoading ? (
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
@@ -1123,8 +1123,8 @@ export default function AdminDashboard() {
           </div>
         </div>
       ) : (
-      <div className="w-full max-w-6xl">
-        <div className="mb-6 glass-panel rounded-2xl p-4 shadow-lift">
+      <div className="dashboard-wrap">
+        <div className="mb-6 toolbar-panel">
         <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div className="flex-1">
             <div className="flex items-center justify-between">
@@ -1141,18 +1141,18 @@ export default function AdminDashboard() {
                   setIsAdminAuthorized(false)
                   navigate('/')
                 }}
-                className="rounded-xl bg-red-500 hover:bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow"
+                className="btn-danger"
               >
                 Logout
               </button>
             </div>
           </div>
-          <div className="glass-panel flex w-full flex-col gap-3 rounded-2xl p-4 shadow-lift md:w-auto md:min-w-[280px]">
+          <div className="toolbar-panel flex w-full flex-col gap-3 md:w-auto md:min-w-[280px]">
             <div className="flex items-center justify-between text-sm">
               <span className="text-ink-300">Selected Month</span>
               <input
                 type="month"
-                className="rounded-lg border border-sand-200 bg-white/80 px-3 py-1 text-sm font-semibold text-ink-500"
+                className="control-input font-semibold"
                 value={selectedMonth}
                 onChange={(event) => setSelectedMonth(event.target.value)}
               />
@@ -1180,19 +1180,19 @@ export default function AdminDashboard() {
                   placeholder="Search user"
                   value={userSearch}
                   onChange={(event) => setUserSearch(event.target.value)}
-                  className="rounded-lg border border-sand-200 bg-white/80 px-3 py-1 text-sm text-ink-500"
+                  className="control-input"
                 />
                 <span className="text-xs uppercase tracking-[0.2em] text-ink-300">Month</span>
                 <input
                   type="month"
-                  className="rounded-lg border border-sand-200 bg-white/80 px-3 py-1 text-sm font-semibold text-ink-500"
+                  className="control-input font-semibold"
                   value={selectedMonth}
                   onChange={(event) => setSelectedMonth(event.target.value)}
                 />
                 <button
                   type="button"
                   onClick={handleExportCsv}
-                  className="rounded-full border border-sand-200 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-ink-500"
+                  className="btn-pill border border-sand-200 bg-white text-ink-500"
                 >
                   Export CSV
                 </button>
@@ -1262,19 +1262,19 @@ export default function AdminDashboard() {
             </div>
             <div className="mt-4 flex flex-wrap gap-3">
               <button
-                className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow"
+                className="btn-primary"
                 onClick={() => openUserModal('add')}
               >
                 Add user
               </button>
               <button
-                className="rounded-xl border border-sand-200 px-4 py-2 text-sm font-semibold text-ink-400"
+                className="btn-secondary"
                 onClick={() => openUserModal('edit')}
               >
                 Edit selected
               </button>
               <button
-                className="rounded-xl border border-sand-200 px-4 py-2 text-sm font-semibold text-ink-400"
+                className="btn-secondary"
                 onClick={() => openUserModal('delete')}
               >
                 Delete selected
