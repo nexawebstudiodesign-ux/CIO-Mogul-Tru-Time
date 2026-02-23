@@ -315,6 +315,47 @@ export class UsersService {
     };
   }
 
+  async permanentlyDeleteUser(userId: string) {
+    const { data: user, error: userError } = await this.supabaseService.client
+      .from('users')
+      .select('id,name,email,employee_id,is_active')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (userError || !user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (user.is_active !== false) {
+      throw new BadRequestException('Move user to recycle bin before permanent delete');
+    }
+
+    const { error: deleteDbError } = await this.supabaseService.client
+      .from('users')
+      .delete()
+      .eq('id', userId);
+
+    if (deleteDbError) {
+      throw new BadRequestException('Unable to permanently delete user');
+    }
+
+    const { error: deleteAuthError } = await this.supabaseService.client.auth.admin.deleteUser(userId);
+    if (deleteAuthError) {
+      console.warn('Deleted user row but failed to delete auth user', {
+        userId,
+        error: deleteAuthError.message,
+      });
+    }
+
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      employeeId: user.employee_id,
+      message: 'User permanently deleted',
+    };
+  }
+
   async getMe(userId: string) {
     const { data: user, error } = await this.supabaseService.client
       .from('users')

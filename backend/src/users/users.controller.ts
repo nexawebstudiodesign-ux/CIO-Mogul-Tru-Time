@@ -43,6 +43,12 @@ export class UsersController {
     return this.usersService.deleteUser(id);
   }
 
+  @Delete(':id/permanent')
+  @Roles(Role.ADMIN)
+  removePermanently(@Param('id') id: string) {
+    return this.usersService.permanentlyDeleteUser(id);
+  }
+
   @Patch(':id/restore')
   @Roles(Role.ADMIN)
   restore(@Param('id') id: string) {

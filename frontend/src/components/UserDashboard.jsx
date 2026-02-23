@@ -352,7 +352,7 @@ export default function UserDashboard() {
 
   if (!loggedUser) {
     return (
-      <div className="min-h-screen p-6 md:p-10">
+      <div className="min-h-screen p-6 md:p-10 flex items-center justify-center">
         <div className="mx-auto max-w-lg">
           <div className="glass-panel rounded-3xl p-8 shadow-lift">
             <p className="text-sm uppercase tracking-[0.3em] text-ink-300">CIO Mogul</p>
@@ -371,7 +371,7 @@ export default function UserDashboard() {
   }
 
   return (
-    <div className="min-h-screen p-6 md:p-10 flex justify-center">
+    <div className="min-h-screen p-6 md:p-10 flex items-center justify-center">
       <div className="w-full max-w-5xl">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>

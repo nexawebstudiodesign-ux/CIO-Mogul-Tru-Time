@@ -136,6 +136,12 @@ class ApiService {
     })
   }
 
+  async permanentlyDeleteUser(userId) {
+    return this.request(`/users/${userId}/permanent`, {
+      method: 'DELETE',
+    })
+  }
+
   async updateLeaveBalance(userId, leaveBalance) {
     return this.request(`/users/${userId}/leave-balance`, {
       method: 'PATCH',

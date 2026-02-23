@@ -799,6 +799,30 @@ export default function AdminDashboard() {
     }
   }
 
+  const handleUserPermanentDelete = async (userId) => {
+    const user = users.find((item) => item.id === userId)
+    const userLabel = user?.name || user?.employeeId || userId
+
+    if (!window.confirm(`Permanently delete ${userLabel}? This action cannot be undone.`)) {
+      return
+    }
+
+    try {
+      await apiService.permanentlyDeleteUser(userId)
+      setUsers((prev) => prev.filter((item) => item.id !== userId))
+
+      if (selectedUserId === userId) {
+        const fallbackUser = activeUsers.find((item) => item.id !== userId)
+        setSelectedUserId(fallbackUser?.id ?? '')
+      }
+
+      showToast('User permanently deleted.', 'success')
+    } catch (error) {
+      console.error('Failed to permanently delete user:', error)
+      showToast(error.message || 'Failed to permanently delete user', 'error')
+    }
+  }
+
   const handleLeaveSubmit = async (event) => {
     event.preventDefault()
     const errors = validateLeaveForm()
@@ -1066,7 +1090,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen p-6 md:p-10 flex justify-center">
+    <div className="min-h-screen p-6 md:p-10 flex items-center justify-center">
       {isLoading ? (
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
@@ -1314,6 +1338,13 @@ export default function AdminDashboard() {
                         className="rounded-lg bg-brand-600 px-3 py-1 text-xs font-semibold text-white"
                       >
                         Restore
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleUserPermanentDelete(user.id)}
+                        className="ml-2 rounded-lg bg-red-600 px-3 py-1 text-xs font-semibold text-white hover:bg-red-700"
+                      >
+                        Delete Permanently
                       </button>
                     </div>
                   ))}
