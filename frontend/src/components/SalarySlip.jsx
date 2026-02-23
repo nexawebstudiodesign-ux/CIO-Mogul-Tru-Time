@@ -109,15 +109,15 @@ export default function SalarySlip() {
           .print-text { font-size: 10.5px !important; line-height: 1.4 !important; }
           .print-heading { font-size: 15px !important; line-height: 1.25 !important; }
           .font-signature { 
-            font-family: 'Brush Script MT', cursive; 
+            font-family: 'Poppins', ui-sans-serif, system-ui, sans-serif; 
             font-size: 20px !important;
           }
           h1, h2, h3 { margin: 4px 0 !important; }
           .space-y-2 > * + * { margin-top: 4px !important; }
         }
         .font-signature { 
-          font-family: 'Brush Script MT', 'Lucida Handwriting', cursive; 
-          font-style: italic;
+          font-family: 'Poppins', ui-sans-serif, system-ui, sans-serif; 
+          font-style: normal;
         }
         .salary-slip-page {
           width: 210mm;
