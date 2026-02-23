@@ -41,6 +41,10 @@
     @apply min-h-screen p-4 sm:p-6 md:p-10;
   }
 
+  .dashboard-page {
+    @apply min-h-screen p-4 sm:p-6 md:p-10 flex items-start justify-center;
+  }
+
   .page-center {
     @apply flex items-center justify-center;
   }
@@ -50,7 +54,7 @@
   }
 
   .dashboard-wrap {
-    @apply w-full max-w-6xl;
+    @apply mx-auto w-full max-w-6xl;
   }
 
   .toolbar-panel {

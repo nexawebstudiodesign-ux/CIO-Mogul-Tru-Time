@@ -58,6 +58,7 @@ export default function AdminDashboard() {
   const [leaveFormErrors, setLeaveFormErrors] = useState({})
 
   const [salaryForm, setSalaryForm] = useState({
+    month: selectedMonth,
     workingDays: '',
     baseSalary: '',
     hra: '',
@@ -578,6 +579,7 @@ export default function AdminDashboard() {
     )
     if (mode === 'add' || !existing) {
       setSalaryForm({
+        month: selectedMonth,
         workingDays: '22',
         baseSalary: '',
         hra: '',
@@ -590,6 +592,7 @@ export default function AdminDashboard() {
       })
     } else {
       setSalaryForm({
+        month: existing.month || selectedMonth,
         workingDays: String(existing.workingDays || 22),
         baseSalary: String(existing.baseSalary),
         hra: String(existing.hra),
@@ -659,6 +662,9 @@ export default function AdminDashboard() {
 
   const validateSalaryForm = () => {
     const errors = {}
+    if (!salaryForm.month || !/^\d{4}-\d{2}$/.test(salaryForm.month)) {
+      errors.month = 'Select a valid month (YYYY-MM)'
+    }
     // All fields are optional, only validate format if provided
     if (salaryForm.workingDays && (Number.isNaN(Number(salaryForm.workingDays)) || Number(salaryForm.workingDays) < 1 || Number(salaryForm.workingDays) > 31)) {
       errors.workingDays = 'Working days must be between 1 and 31'
@@ -1016,13 +1022,14 @@ export default function AdminDashboard() {
       return
     }
     try {
+      const salaryMonth = salaryForm.month || selectedMonth
       const existing = monthlySalaries.find(
-        (s) => s.userId === selectedUserId && s.month === selectedMonth
+        (s) => s.userId === selectedUserId && s.month === salaryMonth
       )
       
       const salaryData = {
         userId: selectedUserId,
-        month: selectedMonth,
+        month: salaryMonth,
         workingDays: Number(salaryForm.workingDays) || 0,
         baseSalary: Number(salaryForm.baseSalary) || 0,
         hra: Number(salaryForm.hra) || 0,
@@ -1045,6 +1052,7 @@ export default function AdminDashboard() {
         setMonthlySalaries((prev) => [newSalary, ...prev])
         showToast('Salary created successfully.', 'success')
       }
+      setSelectedMonth(salaryMonth)
       setShowSalaryModal(false)
       setSalaryFormErrors({})
     } catch (error) {
@@ -1090,7 +1098,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="app-page page-center">
+    <div className="dashboard-page">
       {isLoading ? (
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
@@ -1817,12 +1825,12 @@ export default function AdminDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-semibold text-ink-500">
-                  {monthlySalaries.find((s) => s.userId === selectedUserId && s.month === selectedMonth)
-                    ? `Edit Salary - ${selectedMonth}`
-                    : `Create Salary - ${selectedMonth}`}
+                  {monthlySalaries.find((s) => s.userId === selectedUserId && s.month === salaryForm.month)
+                    ? `Edit Salary - ${salaryForm.month}`
+                    : `Create Salary - ${salaryForm.month || selectedMonth}`}
                 </h3>
                 <p className="text-xs text-ink-300 mt-1">
-                  {monthlySalaries.find((s) => s.userId === selectedUserId && s.month === selectedMonth)
+                  {monthlySalaries.find((s) => s.userId === selectedUserId && s.month === salaryForm.month)
                     ? '✏️ Updating existing salary record'
                     : '➕ Creating new salary record'}
                 </p>
@@ -1831,14 +1839,28 @@ export default function AdminDashboard() {
                 Close
               </button>
             </div>
-            {!monthlySalaries.find((s) => s.userId === selectedUserId && s.month === selectedMonth) && (
+            {!monthlySalaries.find((s) => s.userId === selectedUserId && s.month === salaryForm.month) && (
               <div className="mt-3 rounded-lg bg-blue-50 p-2 border border-blue-200">
                 <p className="text-xs text-blue-800">
-                  ℹ️ Note: You can only create salary records for the current month or next month
+                  ℹ️ Select any month to create or update salary for this employee
                 </p>
               </div>
             )}
             <form className="mt-4 grid gap-4 sm:grid-cols-2" onSubmit={handleSalarySubmit}>
+              <div className="sm:col-span-2">
+                <label className="text-xs font-semibold text-ink-400">Salary Month <span className="text-red-500">*</span></label>
+                <input
+                  className="input-field mt-1"
+                  type="month"
+                  required
+                  value={salaryForm.month}
+                  onChange={(e) => setSalaryForm((prev) => ({ ...prev, month: e.target.value }))}
+                />
+                <p className="mt-1 text-xs text-ink-300">Pick the month this salary record belongs to</p>
+                {salaryFormErrors.month && (
+                  <p className="mt-1 text-xs text-red-500">{salaryFormErrors.month}</p>
+                )}
+              </div>
               <div>
                 <label className="text-xs font-semibold text-ink-400">Number of Working Days <span className="text-ink-300">(Optional)</span></label>
                 <input
@@ -1984,7 +2006,7 @@ export default function AdminDashboard() {
               {salaryFormErrors.general && <p className="text-xs text-red-500">{salaryFormErrors.general}</p>}
               <div className="sm:col-span-2">
                 <button className="w-full rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white">
-                  {monthlySalaries.find((s) => s.userId === selectedUserId && s.month === selectedMonth)
+                  {monthlySalaries.find((s) => s.userId === selectedUserId && s.month === salaryForm.month)
                     ? 'Update Salary Record'
                     : 'Create Salary Record'}
                 </button>

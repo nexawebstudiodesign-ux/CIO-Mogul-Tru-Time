@@ -1,6 +1,10 @@
-import { IsNumber, IsOptional, Min } from 'class-validator';
+import { IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 export class UpdateMonthlySalaryDto {
+  @IsString()
+  @IsOptional()
+  month?: string;
+
   @IsNumber()
   @Min(1)
   @IsOptional()

@@ -1,9 +1,33 @@
-import { useState, useMemo } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useApp } from '../context/useApp'
+import { apiService } from '../utils/api'
 
 export default function SalarySlip() {
-  const { loggedUser, loggedUserId, attendance, monthlySalaries, currentMonth, showToast } = useApp()
+  const { loggedUser, loggedUserId, attendance, monthlySalaries, setMonthlySalaries, currentMonth, showToast } = useApp()
   const [salarySlipMonth, setSalarySlipMonth] = useState(currentMonth)
+
+  useEffect(() => {
+    if (!loggedUserId || !salarySlipMonth) {
+      return
+    }
+
+    const loadSalaryForSlipMonth = async () => {
+      try {
+        const salaryRows = await apiService.getMySalaries(salarySlipMonth)
+        const list = Array.isArray(salaryRows) ? salaryRows : []
+        setMonthlySalaries((prev) => {
+          const keep = prev.filter(
+            (salary) => !(salary.userId === loggedUserId && salary.month === salarySlipMonth),
+          )
+          return [...list, ...keep]
+        })
+      } catch (error) {
+        console.error('Failed to refresh salary slip month data:', error)
+      }
+    }
+
+    loadSalaryForSlipMonth()
+  }, [loggedUserId, salarySlipMonth, setMonthlySalaries])
 
   const monthYear = new Date(salarySlipMonth + '-01').toLocaleDateString('en-US', {
     month: 'long',

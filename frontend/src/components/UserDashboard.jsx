@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../context/useApp'
 import { apiService } from '../utils/api'
@@ -11,6 +11,7 @@ export default function UserDashboard() {
     setLoggedUser,
     loggedUserId,
     monthlySalaries,
+    setMonthlySalaries,
     leaves,
     setLeaves,
     attendance,
@@ -22,6 +23,29 @@ export default function UserDashboard() {
     showToast,
     publicHolidays,
   } = useApp()
+
+  useEffect(() => {
+    if (!loggedUserId || !selectedMonth) {
+      return
+    }
+
+    const loadSalaryForSelectedMonth = async () => {
+      try {
+        const salaryRows = await apiService.getMySalaries(selectedMonth)
+        const list = Array.isArray(salaryRows) ? salaryRows : []
+        setMonthlySalaries((prev) => {
+          const keep = prev.filter(
+            (salary) => !(salary.userId === loggedUserId && salary.month === selectedMonth),
+          )
+          return [...list, ...keep]
+        })
+      } catch (error) {
+        console.error('Failed to refresh salary for selected month:', error)
+      }
+    }
+
+    loadSalaryForSelectedMonth()
+  }, [loggedUserId, selectedMonth, setMonthlySalaries])
 
   const [userAttendanceForm, setUserAttendanceForm] = useState({
     date: '',
@@ -371,8 +395,8 @@ export default function UserDashboard() {
   }
 
   return (
-    <div className="app-page page-center">
-      <div className="w-full max-w-5xl">
+    <div className="dashboard-page">
+      <div className="mx-auto w-full max-w-5xl">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-sm uppercase tracking-[0.3em] text-ink-300">CIO Mogul</p>

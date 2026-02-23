@@ -105,6 +105,42 @@ export class SalaryService {
 
   async update(id: string, updateSalaryDto: UpdateMonthlySalaryDto) {
     const updateData: any = {};
+
+    const { data: existingSalary, error: existingError } = await this.supabase.client
+      .from('monthly_salaries')
+      .select('id,user_id,month')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (existingError || !existingSalary) {
+      throw new NotFoundException('Salary record not found');
+    }
+
+    if (updateSalaryDto.month) {
+      const normalizedMonth = this.normalizeMonth(updateSalaryDto.month);
+
+      if (normalizedMonth !== existingSalary.month) {
+        const { data: duplicate, error: duplicateError } = await this.supabase.client
+          .from('monthly_salaries')
+          .select('id')
+          .eq('user_id', existingSalary.user_id)
+          .eq('month', normalizedMonth)
+          .neq('id', id)
+          .maybeSingle();
+
+        if (duplicateError) {
+          throw new BadRequestException('Unable to validate salary month update');
+        }
+
+        if (duplicate) {
+          throw new BadRequestException('Salary record already exists for this user and month');
+        }
+      }
+
+      updateData.month = normalizedMonth;
+    }
+
+    if (updateSalaryDto.workingDays !== undefined) updateData.working_days = updateSalaryDto.workingDays;
     
     if (updateSalaryDto.baseSalary !== undefined) updateData.base_salary = updateSalaryDto.baseSalary;
     if (updateSalaryDto.hra !== undefined) updateData.hra = updateSalaryDto.hra;
