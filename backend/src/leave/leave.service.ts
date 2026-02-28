@@ -7,9 +7,13 @@ import { UpdateLeaveStatusDto } from './dto/update-leave-status.dto';
 
 @Injectable()
 export class LeaveService {
+  private static readonly MAX_LEAVE_BALANCE = 12;
+
   constructor(private supabaseService: SupabaseService) {}
 
   async adminCreateLeave(dto: AdminCreateLeaveDto) {
+    await this.applyMonthlyAccrualForUser(dto.userId);
+
     const fromDate = this.normalizeDate(dto.fromDate);
     const toDate = this.normalizeDate(dto.toDate);
     if (toDate < fromDate) {
@@ -39,6 +43,8 @@ export class LeaveService {
   }
 
   async applyLeave(userId: string, dto: ApplyLeaveDto) {
+    await this.applyMonthlyAccrualForUser(userId);
+
     const fromDate = this.normalizeDate(dto.fromDate);
     const toDate = this.normalizeDate(dto.toDate);
     const today = this.normalizeDate(new Date().toISOString());
@@ -182,6 +188,8 @@ export class LeaveService {
       return leave;
     }
 
+    await this.applyMonthlyAccrualForUser(leave.user_id);
+
     // When rejecting a leave, restore the balance for CASUAL/SICK leaves
     if (dto.status === 'REJECTED' && (leave.leave_type === 'CASUAL' || leave.leave_type === 'SICK')) {
       const days = this.countDays(leave.from_date, leave.to_date);
@@ -292,6 +300,8 @@ export class LeaveService {
       throw new NotFoundException('Leave request not found');
     }
 
+    await this.applyMonthlyAccrualForUser(existing.user_id);
+
     const newFrom = dto.fromDate ? this.normalizeDate(dto.fromDate) : existing.from_date;
     const newTo = dto.toDate ? this.normalizeDate(dto.toDate) : existing.to_date;
     if (newTo < newFrom) {
@@ -334,6 +344,8 @@ export class LeaveService {
       throw new NotFoundException('Leave request not found');
     }
 
+    await this.applyMonthlyAccrualForUser(existing.user_id);
+
     if (existing.status === 'APPROVED') {
       const days = this.countDays(existing.from_date, existing.to_date);
       await this.adjustLeaveBalance(existing.user_id, days, 0, existing.leave_type);
@@ -371,6 +383,8 @@ export class LeaveService {
   }
 
   private async adjustLeaveBalance(userId: string, oldDays: number, newDays: number, leaveType: string) {
+    await this.applyMonthlyAccrualForUser(userId);
+
     const delta = newDays - oldDays;
     if (delta === 0) {
       return;
@@ -397,6 +411,56 @@ export class LeaveService {
       .eq('id', user.id);
     if (updateError) {
       throw new BadRequestException('Unable to update leave balance');
+    }
+  }
+
+  private getCurrentAccrualMonth() {
+    const now = new Date();
+    return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+  }
+
+  private async applyMonthlyAccrualForUser(userId: string) {
+    const { data: user, error } = await this.supabaseService.client
+      .from('users')
+      .select('id,casual_balance,sick_balance,last_leave_accrual_month')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (error) {
+      if (String(error.message ?? '').includes('last_leave_accrual_month')) {
+        return;
+      }
+      throw new BadRequestException('Unable to process monthly leave accrual');
+    }
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const month = this.getCurrentAccrualMonth();
+    if ((user as { last_leave_accrual_month?: string }).last_leave_accrual_month === month) {
+      return;
+    }
+
+    const casualBalance = Math.min(
+      Number((user as { casual_balance?: number }).casual_balance ?? 0) + 1,
+      LeaveService.MAX_LEAVE_BALANCE,
+    );
+    const sickBalance = Math.min(
+      Number((user as { sick_balance?: number }).sick_balance ?? 0) + 1,
+      LeaveService.MAX_LEAVE_BALANCE,
+    );
+
+    const { error: updateError } = await this.supabaseService.client
+      .from('users')
+      .update({
+        casual_balance: casualBalance,
+        sick_balance: sickBalance,
+        last_leave_accrual_month: month,
+      })
+      .eq('id', userId);
+
+    if (updateError) {
+      throw new BadRequestException('Unable to process monthly leave accrual');
     }
   }
 }

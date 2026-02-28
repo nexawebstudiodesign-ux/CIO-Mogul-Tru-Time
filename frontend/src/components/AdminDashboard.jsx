@@ -77,7 +77,6 @@ export default function AdminDashboard() {
   const [attendanceSearch, setAttendanceSearch] = useState('')
   const [attendanceStatusFilter, setAttendanceStatusFilter] = useState('All')
   const [salarySearch, setSalarySearch] = useState('')
-  const [reportEmail, setReportEmail] = useState('')
   const [reportBusy, setReportBusy] = useState(false)
   const [reportMessage, setReportMessage] = useState('')
   const [newUserCredentials, setNewUserCredentials] = useState(null)
@@ -358,6 +357,8 @@ export default function AdminDashboard() {
   }, [monthlySalaries, selectedMonth, users, salarySearch])
 
   const selectedUser = users.find((user) => user.id === selectedUserId)
+  const selectedLeave = leaves.find((leave) => leave.id === selectedLeaveId)
+  const selectedLeaveUser = users.find((user) => user.id === selectedLeave?.userId)
 
   const handleExportCsv = () => {
     const headers = ['Employee ID', 'Name', 'Email', 'Entries', 'Total Hours', 'Avg Hours', 'Compliance %']
@@ -883,23 +884,23 @@ export default function AdminDashboard() {
     if (!selectedLeaveId) {
       return
     }
-    const leave = leaves.find((item) => item.id === selectedLeaveId)
-    if (!leave) {
+    if (!selectedLeave) {
       return
     }
+    const candidateName = selectedLeaveUser?.name || selectedLeave.name || 'the selected candidate'
     
     try {
-      await apiService.updateLeaveStatus(selectedLeaveId, 'Approved')
+      const updatedLeave = await apiService.updateLeaveStatus(selectedLeaveId, 'APPROVED')
       setLeaves((prev) =>
         prev.map((item) =>
-          item.id === selectedLeaveId ? { ...item, status: 'Approved' } : item
+          item.id === selectedLeaveId ? normalizeLeave(updatedLeave) : item
         )
       )
 
       // Refresh users to get updated leave balances
       const usersData = await apiService.getUsers()
-      setUsers(usersData)
-      showToast('Leave approved successfully.', 'success')
+      setUsers((usersData ?? []).map(normalizeUser))
+      showToast(`Leave approved for ${candidateName}.`, 'success')
     } catch (error) {
       console.error('Failed to approve leave:', error)
       showToast(error.message || 'Failed to approve leave', 'error')
@@ -911,17 +912,54 @@ export default function AdminDashboard() {
       return
     }
     
+    const candidateName = selectedLeaveUser?.name || selectedLeave?.name || 'the selected candidate'
+
     try {
-      await apiService.updateLeaveStatus(selectedLeaveId, 'Rejected')
+      const updatedLeave = await apiService.updateLeaveStatus(selectedLeaveId, 'REJECTED')
       setLeaves((prev) =>
         prev.map((item) =>
-          item.id === selectedLeaveId ? { ...item, status: 'Rejected' } : item
+          item.id === selectedLeaveId ? normalizeLeave(updatedLeave) : item
         )
       )
-      showToast('Leave rejected successfully.', 'success')
+
+      // Refresh users to get restored leave balances (if applicable)
+      const usersData = await apiService.getUsers()
+      setUsers((usersData ?? []).map(normalizeUser))
+
+      showToast(`Leave rejected for ${candidateName}.`, 'success')
     } catch (error) {
       console.error('Failed to reject leave:', error)
       showToast(error.message || 'Failed to reject leave', 'error')
+    }
+  }
+
+  const handleAddLeaveBalance = async (leaveType) => {
+    if (!selectedLeaveUser?.id) {
+      showToast('Select a leave request first.', 'warning')
+      return
+    }
+
+    const currentCasual = Number(selectedLeaveUser.casualBalance || 0)
+    const currentSick = Number(selectedLeaveUser.sickBalance || 0)
+    const nextCasual = leaveType === 'CASUAL' ? Math.min(currentCasual + 1, 12) : currentCasual
+    const nextSick = leaveType === 'SICK' ? Math.min(currentSick + 1, 12) : currentSick
+
+    try {
+      const updatedUser = await apiService.updateLeaveBalance(selectedLeaveUser.id, {
+        casualBalance: nextCasual,
+        sickBalance: nextSick,
+      })
+
+      const normalized = normalizeUser(updatedUser)
+      setUsers((prev) => prev.map((user) => (user.id === normalized.id ? normalized : user)))
+
+      showToast(
+        `${leaveType === 'CASUAL' ? 'Casual' : 'Sick'} leave added for ${normalized.name}.`,
+        'success',
+      )
+    } catch (error) {
+      console.error('Failed to add leave balance:', error)
+      showToast(error.message || 'Failed to add leave balance', 'error')
     }
   }
 
@@ -1040,36 +1078,31 @@ export default function AdminDashboard() {
     }
   }
 
+  const askReportMonth = () => {
+    const enteredMonth = window.prompt('Enter report month (YYYY-MM):', selectedMonth)
+    if (enteredMonth === null) return null
+    const month = enteredMonth.trim()
+    if (!/^\d{4}-\d{2}$/.test(month)) {
+      showToast('Please enter month as YYYY-MM', 'warning')
+      return null
+    }
+    return month
+  }
+
   const handleDownloadMonthlyReport = async () => {
+    const month = askReportMonth()
+    if (!month) return
+
     try {
       setReportBusy(true)
       setReportMessage('')
-      await apiService.downloadMonthlySummaryReportCsv(selectedMonth)
-      setReportMessage('Monthly report downloaded.')
-      showToast('Monthly report downloaded.', 'success')
+      await apiService.downloadMonthlySummaryReportCsv(month)
+      setSelectedMonth(month)
+      setReportMessage(`Monthly report downloaded for ${month}.`)
+      showToast(`Monthly report downloaded for ${month}.`, 'success')
     } catch (error) {
       setReportMessage(error.message || 'Failed to download monthly report')
       showToast(error.message || 'Failed to download monthly report', 'error')
-    } finally {
-      setReportBusy(false)
-    }
-  }
-
-  const handleEmailMonthlyReport = async () => {
-    if (!reportEmail.trim()) {
-      setReportMessage('Enter email address first')
-      showToast('Enter email address first', 'warning')
-      return
-    }
-    try {
-      setReportBusy(true)
-      setReportMessage('')
-      await apiService.emailMonthlySummaryReport(selectedMonth, reportEmail.trim())
-      setReportMessage(`Report sent to ${reportEmail.trim()}`)
-      showToast(`Report sent to ${reportEmail.trim()}`, 'success')
-    } catch (error) {
-      setReportMessage(error.message || 'Failed to send report email')
-      showToast(error.message || 'Failed to send report email', 'error')
     } finally {
       setReportBusy(false)
     }
@@ -1380,31 +1413,15 @@ export default function AdminDashboard() {
             <div className="mt-6">
               <div className="rounded-2xl border border-sand-200 p-4 mb-6 bg-white/70">
                 <h3 className="text-sm font-semibold text-ink-500">Monthly Reports</h3>
-                <p className="text-xs text-ink-300 mt-1">Compliance + payroll summary for selected month</p>
+                <p className="text-xs text-ink-300 mt-1">Compliance + payroll summary (choose month when clicked)</p>
                 <div className="mt-3 flex flex-col gap-2">
                   <button
                     className="rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
                     onClick={handleDownloadMonthlyReport}
                     disabled={reportBusy}
                   >
-                    Download Monthly Summary CSV
+                    Monthly Reports
                   </button>
-                  <div className="flex gap-2">
-                    <input
-                      type="email"
-                      value={reportEmail}
-                      onChange={(event) => setReportEmail(event.target.value)}
-                      placeholder="report email"
-                      className="flex-1 rounded-lg border border-sand-200 bg-white px-3 py-2 text-xs text-ink-500"
-                    />
-                    <button
-                      className="rounded-lg border border-sand-200 bg-white px-3 py-2 text-xs font-semibold text-ink-500 disabled:opacity-50"
-                      onClick={handleEmailMonthlyReport}
-                      disabled={reportBusy}
-                    >
-                      Email
-                    </button>
-                  </div>
                   {reportMessage && <p className="text-xs text-ink-400">{reportMessage}</p>}
                 </div>
               </div>
@@ -1616,6 +1633,41 @@ export default function AdminDashboard() {
                 </div>
               </div>
               <p className="mt-2 text-xs text-ink-300">Global matches this month: {globalLeaveRows.length}</p>
+              <div className="mt-3 rounded-2xl border border-sand-200 bg-white/70 p-4">
+                <h4 className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-500">Selected Leave Request</h4>
+                {selectedLeave ? (
+                  <div className="mt-2 space-y-2 text-sm text-ink-500">
+                    <p>
+                      <span className="font-semibold">Candidate:</span> {selectedLeaveUser?.name || selectedLeave.name || 'Unknown'}
+                    </p>
+                    <p>
+                      <span className="font-semibold">Employee ID:</span> {selectedLeaveUser?.employeeId || selectedLeave.userId}
+                    </p>
+                    <p>
+                      <span className="font-semibold">Status:</span> {selectedLeave.status}
+                    </p>
+                    <div className="flex items-center gap-3 pt-1">
+                      <span className="text-xs text-ink-300">
+                        Balance — Casual: {selectedLeaveUser?.casualBalance ?? 0}, Sick: {selectedLeaveUser?.sickBalance ?? 0}
+                      </span>
+                      <button
+                        className="rounded-lg border border-sand-200 bg-white px-2 py-1 text-xs font-semibold text-ink-500"
+                        onClick={() => handleAddLeaveBalance('CASUAL')}
+                      >
+                        +1 Casual
+                      </button>
+                      <button
+                        className="rounded-lg border border-sand-200 bg-white px-2 py-1 text-xs font-semibold text-ink-500"
+                        onClick={() => handleAddLeaveBalance('SICK')}
+                      >
+                        +1 Sick
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="mt-2 text-xs text-ink-300">Select a leave row to view candidate and leave balance.</p>
+                )}
+              </div>
               <div className="mt-3 overflow-hidden rounded-2xl border border-sand-200">
                 <div className="grid grid-cols-[1fr_0.8fr_0.6fr_0.6fr] bg-sand-50 px-4 py-4 text-xs uppercase tracking-[0.2em] text-ink-500 font-semibold border-b border-sand-200">
                   <span>Type</span>

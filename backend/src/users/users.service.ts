@@ -8,6 +8,8 @@ import * as bcrypt from 'bcryptjs';
 
 @Injectable()
 export class UsersService {
+  private static readonly MAX_LEAVE_BALANCE = 12;
+
   constructor(private supabaseService: SupabaseService) {}
 
   async createUser(dto: CreateUserDto) {
@@ -69,6 +71,8 @@ export class UsersService {
   }
 
   async listUsers() {
+    await this.applyMonthlyAccrualForAllUsers();
+
     const { data, error } = await this.supabaseService.client
       .from('users')
       .select('id,name,email,employee_id,role,casual_balance,sick_balance,is_active,created_at')
@@ -353,6 +357,8 @@ export class UsersService {
   }
 
   async getMe(userId: string) {
+    await this.applyMonthlyAccrualForUser(userId);
+
     const { data: user, error } = await this.supabaseService.client
       .from('users')
       .select('id,name,email,employee_id,role,casual_balance,sick_balance,is_active')
@@ -390,5 +396,97 @@ export class UsersService {
       }
     }
     return `${prefix}${String(max + 1).padStart(3, '0')}`;
+  }
+
+  private getCurrentAccrualMonth() {
+    const now = new Date();
+    return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+  }
+
+  private async applyMonthlyAccrualForAllUsers() {
+    const { data: users, error } = await this.supabaseService.client
+      .from('users')
+      .select('id,casual_balance,sick_balance,last_leave_accrual_month');
+
+    if (error) {
+      if (String(error.message ?? '').includes('last_leave_accrual_month')) {
+        return;
+      }
+      throw new BadRequestException('Unable to process monthly leave accrual');
+    }
+
+    const month = this.getCurrentAccrualMonth();
+    for (const user of users ?? []) {
+      if ((user as { last_leave_accrual_month?: string }).last_leave_accrual_month === month) {
+        continue;
+      }
+
+      const casualBalance = Math.min(
+        Number((user as { casual_balance?: number }).casual_balance ?? 0) + 1,
+        UsersService.MAX_LEAVE_BALANCE,
+      );
+      const sickBalance = Math.min(
+        Number((user as { sick_balance?: number }).sick_balance ?? 0) + 1,
+        UsersService.MAX_LEAVE_BALANCE,
+      );
+
+      const { error: updateError } = await this.supabaseService.client
+        .from('users')
+        .update({
+          casual_balance: casualBalance,
+          sick_balance: sickBalance,
+          last_leave_accrual_month: month,
+        })
+        .eq('id', (user as { id: string }).id);
+
+      if (updateError) {
+        throw new BadRequestException('Unable to process monthly leave accrual');
+      }
+    }
+  }
+
+  private async applyMonthlyAccrualForUser(userId: string) {
+    const { data: user, error } = await this.supabaseService.client
+      .from('users')
+      .select('id,casual_balance,sick_balance,last_leave_accrual_month')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (error) {
+      if (String(error.message ?? '').includes('last_leave_accrual_month')) {
+        return;
+      }
+      throw new BadRequestException('Unable to process monthly leave accrual');
+    }
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const month = this.getCurrentAccrualMonth();
+    if ((user as { last_leave_accrual_month?: string }).last_leave_accrual_month === month) {
+      return;
+    }
+
+    const casualBalance = Math.min(
+      Number((user as { casual_balance?: number }).casual_balance ?? 0) + 1,
+      UsersService.MAX_LEAVE_BALANCE,
+    );
+    const sickBalance = Math.min(
+      Number((user as { sick_balance?: number }).sick_balance ?? 0) + 1,
+      UsersService.MAX_LEAVE_BALANCE,
+    );
+
+    const { error: updateError } = await this.supabaseService.client
+      .from('users')
+      .update({
+        casual_balance: casualBalance,
+        sick_balance: sickBalance,
+        last_leave_accrual_month: month,
+      })
+      .eq('id', userId);
+
+    if (updateError) {
+      throw new BadRequestException('Unable to process monthly leave accrual');
+    }
   }
 }

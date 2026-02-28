@@ -142,10 +142,15 @@ class ApiService {
     })
   }
 
-  async updateLeaveBalance(userId, leaveBalance) {
+  async updateLeaveBalance(userId, leaveBalanceOrPayload) {
+    const payload =
+      typeof leaveBalanceOrPayload === 'number'
+        ? { leaveBalance: leaveBalanceOrPayload }
+        : leaveBalanceOrPayload
+
     return this.request(`/users/${userId}/leave-balance`, {
       method: 'PATCH',
-      body: JSON.stringify({ leaveBalance }),
+      body: JSON.stringify(payload),
     })
   }
 
@@ -230,23 +235,47 @@ class ApiService {
   }
 
   async updateLeaveStatus(leaveId, status) {
+    const normalizedStatus = String(status ?? '').toUpperCase()
+
     return this.request(`/leave/${leaveId}/status`, {
       method: 'PATCH',
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status: normalizedStatus }),
     })
   }
 
   async adminCreateLeave(leaveData) {
+    const payload = {
+      userId: leaveData.userId,
+      leaveType: String(leaveData.leaveType ?? leaveData.type ?? '').toUpperCase(),
+      fromDate: leaveData.fromDate ?? leaveData.startDate,
+      toDate: leaveData.toDate ?? leaveData.endDate,
+      reason: leaveData.reason,
+      status: String(leaveData.status ?? 'PENDING').toUpperCase(),
+    }
+
     return this.request('/leave/admin', {
       method: 'POST',
-      body: JSON.stringify(leaveData),
+      body: JSON.stringify(payload),
     })
   }
 
   async adminUpdateLeave(leaveId, leaveData) {
+    const payload = {
+      userId: leaveData.userId,
+      leaveType: leaveData.leaveType
+        ? String(leaveData.leaveType).toUpperCase()
+        : leaveData.type
+          ? String(leaveData.type).toUpperCase()
+          : undefined,
+      fromDate: leaveData.fromDate ?? leaveData.startDate,
+      toDate: leaveData.toDate ?? leaveData.endDate,
+      reason: leaveData.reason,
+      status: leaveData.status ? String(leaveData.status).toUpperCase() : undefined,
+    }
+
     return this.request(`/leave/${leaveId}`, {
       method: 'PATCH',
-      body: JSON.stringify(leaveData),
+      body: JSON.stringify(payload),
     })
   }
 
