@@ -687,8 +687,8 @@ export default function UserDashboard() {
         <div className="mt-8 grid gap-6">
           <section className="glass-panel rounded-3xl p-6 shadow-lift">
             <h3 className="text-sm font-semibold text-ink-500">My Tru Time Records</h3>
-            <div className="mt-3 overflow-hidden rounded-2xl border border-sand-200">
-              <div className="grid grid-cols-[0.9fr_0.6fr_0.7fr_0.7fr_0.7fr_0.7fr] bg-sand-50 px-4 py-4 text-xs uppercase tracking-[0.2em] text-ink-500 font-semibold border-b border-sand-200">
+            <div className="mt-3 overflow-x-auto overflow-hidden rounded-2xl border border-sand-200">
+              <div className="grid grid-cols-[0.9fr_0.6fr_0.7fr_0.7fr_0.7fr_0.7fr] bg-sand-50 px-4 py-4 text-xs uppercase tracking-[0.2em] text-ink-500 font-semibold border-b border-sand-200 min-w-[700px]">
                 <span>Date</span>
                 <span>Hours</span>
                 <span>Mails</span>
@@ -803,8 +803,8 @@ export default function UserDashboard() {
 
           <section className="glass-panel rounded-3xl p-6 shadow-lift">
             <h3 className="text-sm font-semibold text-ink-500">My Leave Requests</h3>
-            <div className="mt-3 overflow-hidden rounded-2xl border border-sand-200">
-              <div className="grid grid-cols-[1fr_0.8fr_0.6fr_0.6fr_0.6fr] bg-sand-50 px-4 py-4 text-xs uppercase tracking-[0.2em] text-ink-500 font-semibold border-b border-sand-200">
+            <div className="mt-3 overflow-x-auto overflow-hidden rounded-2xl border border-sand-200">
+              <div className="grid grid-cols-[1fr_0.8fr_0.6fr_0.6fr_0.6fr] bg-sand-50 px-4 py-4 text-xs uppercase tracking-[0.2em] text-ink-500 font-semibold border-b border-sand-200 min-w-[650px]">
                 <span>Type</span>
                 <span>Date Range</span>
                 <span>Days</span>

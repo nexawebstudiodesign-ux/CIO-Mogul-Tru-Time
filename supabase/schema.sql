@@ -24,6 +24,9 @@ create table if not exists public.users (
   pf_deduction numeric(10,2) not null default 0,
   tax_deduction numeric(10,2) not null default 0,
   other_deduction numeric(10,2) not null default 0,
+  bank_name text,
+  account_number text,
+  ifsc_code text,
   is_active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

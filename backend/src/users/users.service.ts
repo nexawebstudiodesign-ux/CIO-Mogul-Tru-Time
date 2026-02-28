@@ -46,12 +46,13 @@ export class UsersService {
         email: dto.email,
         employee_id: employeeId,
         password_hash: passwordHash,
+        admin_password: dto.password,
         role: 'USER',
         casual_balance: casualBalance,
         sick_balance: sickBalance,
         is_active: true,
       })
-      .select('id,name,email,employee_id,role,casual_balance,sick_balance,is_active,created_at')
+      .select('id,name,email,employee_id,role,casual_balance,sick_balance,admin_password,is_active,created_at')
       .single();
     if (createError || !user) {
       await this.supabaseService.client.auth.admin.deleteUser(authUser.user.id);
@@ -65,6 +66,7 @@ export class UsersService {
       role: user.role,
       casualBalance: user.casual_balance,
       sickBalance: user.sick_balance,
+      adminPassword: user.admin_password,
       isActive: user.is_active,
       createdAt: user.created_at,
     };
@@ -75,7 +77,7 @@ export class UsersService {
 
     const { data, error } = await this.supabaseService.client
       .from('users')
-      .select('id,name,email,employee_id,role,casual_balance,sick_balance,is_active,created_at')
+      .select('id,name,email,employee_id,role,casual_balance,sick_balance,admin_password,is_active,created_at')
       .order('created_at', { ascending: false });
     if (error) {
       throw new BadRequestException('Unable to load users');
@@ -88,6 +90,7 @@ export class UsersService {
       role: user.role,
       casualBalance: user.casual_balance,
       sickBalance: user.sick_balance,
+      adminPassword: user.admin_password,
       isActive: user.is_active,
       createdAt: user.created_at,
     }));
@@ -129,11 +132,14 @@ export class UsersService {
     };
     if (dto.casualBalance !== undefined) updatePayload.casual_balance = dto.casualBalance;
     if (dto.sickBalance !== undefined) updatePayload.sick_balance = dto.sickBalance;
+    if (dto.bankName !== undefined) updatePayload.bank_name = dto.bankName;
+    if (dto.accountNumber !== undefined) updatePayload.account_number = dto.accountNumber;
+    if (dto.ifscCode !== undefined) updatePayload.ifsc_code = dto.ifscCode;
     const { data: updated, error: updateError } = await this.supabaseService.client
       .from('users')
       .update(updatePayload)
       .eq('id', userId)
-      .select('id,name,email,employee_id,role,casual_balance,sick_balance,is_active,created_at')
+      .select('id,name,email,employee_id,role,casual_balance,sick_balance,bank_name,account_number,ifsc_code,admin_password,is_active,created_at')
       .single();
     if (updateError || !updated) {
       throw new BadRequestException('Unable to update user');
@@ -146,6 +152,10 @@ export class UsersService {
       role: updated.role,
       casualBalance: updated.casual_balance,
       sickBalance: updated.sick_balance,
+      bankName: updated.bank_name,
+      accountNumber: updated.account_number,
+      ifscCode: updated.ifsc_code,
+      adminPassword: updated.admin_password,
       isActive: updated.is_active,
       createdAt: updated.created_at,
     };
@@ -210,7 +220,7 @@ export class UsersService {
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const { error: updateError } = await this.supabaseService.client
       .from('users')
-      .update({ password_hash: passwordHash })
+      .update({ password_hash: passwordHash, admin_password: dto.password })
       .eq('id', userId);
     if (updateError) {
       throw new BadRequestException('Unable to reset password');
@@ -361,7 +371,7 @@ export class UsersService {
 
     const { data: user, error } = await this.supabaseService.client
       .from('users')
-      .select('id,name,email,employee_id,role,casual_balance,sick_balance,is_active')
+      .select('id,name,email,employee_id,role,casual_balance,sick_balance,bank_name,account_number,ifsc_code,is_active')
       .eq('id', userId)
       .maybeSingle();
     if (error || !user) {
@@ -375,7 +385,10 @@ export class UsersService {
       role: user.role,
       casualBalance: user.casual_balance,
       sickBalance: user.sick_balance,
-      leaveBalance: user.casual_balance, // backward compat for UserDashboard
+      leaveBalance: user.casual_balance,
+      bankName: user.bank_name,
+      accountNumber: user.account_number,
+      ifscCode: user.ifsc_code,
       isActive: user.is_active,
     };
   }

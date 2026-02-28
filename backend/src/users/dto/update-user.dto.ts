@@ -22,4 +22,16 @@ export class UpdateUserDto {
   @IsInt()
   @Min(0)
   sickBalance?: number;
+
+  @IsOptional()
+  @IsString()
+  bankName?: string;
+
+  @IsOptional()
+  @IsString()
+  accountNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  ifscCode?: string;
 }

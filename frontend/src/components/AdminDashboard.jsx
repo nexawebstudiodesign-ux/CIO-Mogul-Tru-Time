@@ -43,6 +43,9 @@ export default function AdminDashboard() {
     password: '',
     casualBalance: '0',
     sickBalance: '0',
+    bankName: '',
+    accountNumber: '',
+    ifscCode: '',
   })
   const [userFormErrors, setUserFormErrors] = useState({})
 
@@ -505,7 +508,7 @@ export default function AdminDashboard() {
     setModalMode(mode)
     setUserFormErrors({})
     if (mode === 'add') {
-      setUserForm({ firstName: '', lastName: '', email: '', password: '', casualBalance: '0', sickBalance: '0' })
+      setUserForm({ firstName: '', lastName: '', email: '', password: '', casualBalance: '0', sickBalance: '0', bankName: '', accountNumber: '', ifscCode: '' })
     }
     if (mode === 'edit') {
       const user = users.find((item) => item.id === selectedUserId)
@@ -516,9 +519,12 @@ export default function AdminDashboard() {
           firstName,
           lastName,
           email: user.email,
-          password: '',
+          password: user.adminPassword || '',
           casualBalance: String(user.casualBalance ?? 0),
           sickBalance: String(user.sickBalance ?? 0),
+          bankName: user.bankName || '',
+          accountNumber: user.accountNumber || '',
+          ifscCode: user.ifscCode || '',
         })
       }
     }
@@ -696,7 +702,7 @@ export default function AdminDashboard() {
           sickBalance: clampBalance(Number(userForm.sickBalance || 0)),
         }
         const newUser = await apiService.createUser(userData)
-        setUsers((prev) => [newUser, ...prev])
+        setUsers((prev) => [{ ...newUser, adminPassword: userForm.password }, ...prev])
         setSelectedUserId(newUser.id)
         setNewUserCredentials({
           name: newUser.name,
@@ -711,6 +717,9 @@ export default function AdminDashboard() {
           email: userForm.email.trim(),
           casualBalance: clampBalance(Number(userForm.casualBalance || 0)),
           sickBalance: clampBalance(Number(userForm.sickBalance || 0)),
+          bankName: userForm.bankName.trim() || undefined,
+          accountNumber: userForm.accountNumber.trim() || undefined,
+          ifscCode: userForm.ifscCode.trim() || undefined,
         }
         const updatedUser = await apiService.updateUser(selectedUserId, userData)
         if (userForm.password.trim()) {
@@ -718,7 +727,7 @@ export default function AdminDashboard() {
           toastMessage = 'User updated and password reset.'
         }
         setUsers((prev) =>
-          prev.map((user) => (user.id === selectedUserId ? updatedUser : user))
+          prev.map((user) => (user.id === selectedUserId ? { ...updatedUser, adminPassword: userForm.password.trim() || user.adminPassword } : user))
         )
         if (!toastMessage) {
           toastMessage = 'User updated successfully.'
@@ -1218,8 +1227,8 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <div className="mt-6 overflow-hidden rounded-2xl border border-sand-200">
-              <div className="grid grid-cols-[1.2fr_0.7fr_0.7fr_0.7fr_0.6fr_0.6fr_0.6fr_0.9fr] bg-sand-50 px-4 py-4 text-xs uppercase tracking-[0.2em] text-ink-500 font-semibold border-b border-sand-200">
+            <div className="mt-6 overflow-x-auto overflow-hidden rounded-2xl border border-sand-200">
+              <div className="grid grid-cols-[1.2fr_0.7fr_0.7fr_0.7fr_0.6fr_0.6fr_0.6fr_0.9fr] bg-sand-50 px-4 py-4 text-xs uppercase tracking-[0.2em] text-ink-500 font-semibold border-b border-sand-200 min-w-[900px]">
                 <span>User</span>
                 <span>Entries</span>
                 <span>Total Hours</span>
@@ -1544,8 +1553,8 @@ export default function AdminDashboard() {
                   <option value="Non-compliant">Non-compliant</option>
                 </select>
               </div>
-              <div className="mt-3 overflow-hidden rounded-2xl border border-sand-200">
-                <div className="grid grid-cols-[0.9fr_0.6fr_0.7fr_0.7fr_0.7fr_0.7fr] bg-sand-50 px-4 py-4 text-xs uppercase tracking-[0.2em] text-ink-500 font-semibold border-b border-sand-200">
+              <div className="mt-3 overflow-x-auto overflow-hidden rounded-2xl border border-sand-200">
+                <div className="grid grid-cols-[0.9fr_0.6fr_0.7fr_0.7fr_0.7fr_0.7fr] bg-sand-50 px-4 py-4 text-xs uppercase tracking-[0.2em] text-ink-500 font-semibold border-b border-sand-200 min-w-[700px]">
                   <span>Date</span>
                   <span>Hours</span>
                   <span>Mails</span>
@@ -1668,8 +1677,8 @@ export default function AdminDashboard() {
                   <p className="mt-2 text-xs text-ink-300">Select a leave row to view candidate and leave balance.</p>
                 )}
               </div>
-              <div className="mt-3 overflow-hidden rounded-2xl border border-sand-200">
-                <div className="grid grid-cols-[1fr_0.8fr_0.6fr_0.6fr] bg-sand-50 px-4 py-4 text-xs uppercase tracking-[0.2em] text-ink-500 font-semibold border-b border-sand-200">
+              <div className="mt-3 overflow-x-auto overflow-hidden rounded-2xl border border-sand-200">
+                <div className="grid grid-cols-[1fr_0.8fr_0.6fr_0.6fr] bg-sand-50 px-4 py-4 text-xs uppercase tracking-[0.2em] text-ink-500 font-semibold border-b border-sand-200 min-w-[600px]">
                   <span>Type</span>
                   <span>Date Range</span>
                   <span>Days</span>
@@ -2102,14 +2111,14 @@ export default function AdminDashboard() {
                   <input
                     className="input-field"
                     placeholder="Password"
-                    type="password"
+                    type="text"
                     required={modalMode === 'add'}
                     value={userForm.password}
                     onChange={(event) => setUserForm((prev) => ({ ...prev, password: event.target.value }))}
                   />
                   <p className="mt-1 text-xs text-ink-300">
                     {modalMode === 'edit'
-                      ? 'Leave blank to keep current password, or enter a new one to reset.'
+                      ? 'Current password shown. Change to update, or leave as-is to keep current.'
                       : 'Minimum 6 characters'}
                   </p>
                   {userFormErrors.password && (
@@ -2151,6 +2160,43 @@ export default function AdminDashboard() {
                   {userFormErrors.sickBalance && (
                     <p className="mt-1 text-xs text-red-500">{userFormErrors.sickBalance}</p>
                   )}
+                </div>
+
+                <div>
+                  <input
+                    className="input-field"
+                    placeholder="Bank Name (Optional)"
+                    type="text"
+                    value={userForm.bankName}
+                    onChange={(event) =>
+                      setUserForm((prev) => ({ ...prev, bankName: event.target.value }))
+                    }
+                  />
+                  <p className="mt-1 text-xs text-ink-300">Employee's bank name</p>
+                </div>
+                <div>
+                  <input
+                    className="input-field"
+                    placeholder="Account Number (Optional)"
+                    type="text"
+                    value={userForm.accountNumber}
+                    onChange={(event) =>
+                      setUserForm((prev) => ({ ...prev, accountNumber: event.target.value }))
+                    }
+                  />
+                  <p className="mt-1 text-xs text-ink-300">Bank account number</p>
+                </div>
+                <div>
+                  <input
+                    className="input-field"
+                    placeholder="IFSC Code (Optional)"
+                    type="text"
+                    value={userForm.ifscCode}
+                    onChange={(event) =>
+                      setUserForm((prev) => ({ ...prev, ifscCode: event.target.value }))
+                    }
+                  />
+                  <p className="mt-1 text-xs text-ink-300">Bank IFSC code</p>
                 </div>
                 {modalMode === 'add' && (
                   <p className="text-xs text-ink-300">Employee ID will be auto-generated (e.g., CIO-0001, CIO-0002)</p>

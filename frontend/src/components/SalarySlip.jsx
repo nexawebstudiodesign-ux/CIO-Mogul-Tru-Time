@@ -350,6 +350,33 @@ export default function SalarySlip() {
               </div>
 
               <div className="slip-section border-t border-sand-200 pt-3 print-reduce-sm">
+                {(loggedUser.bankName || loggedUser.accountNumber || loggedUser.ifscCode) && (
+                  <div className="mb-3 rounded-xl border border-sand-200 overflow-hidden">
+                    <div className="bg-sand-50 px-3 py-1">
+                      <h3 className="text-xs font-semibold text-ink-500 print-text">Bank Details</h3>
+                    </div>
+                    <div className="bg-white px-3 py-2 space-y-1">
+                      {loggedUser.bankName && (
+                        <div className="flex justify-between text-xs print-text">
+                          <span className="text-ink-400">Bank Name</span>
+                          <span className="font-semibold text-ink-500">{loggedUser.bankName}</span>
+                        </div>
+                      )}
+                      {loggedUser.accountNumber && (
+                        <div className="flex justify-between text-xs print-text">
+                          <span className="text-ink-400">Account Number</span>
+                          <span className="font-semibold text-ink-500">{loggedUser.accountNumber}</span>
+                        </div>
+                      )}
+                      {loggedUser.ifscCode && (
+                        <div className="flex justify-between text-xs print-text">
+                          <span className="text-ink-400">IFSC Code</span>
+                          <span className="font-semibold text-ink-500">{loggedUser.ifscCode}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
                 <div className="flex justify-end mb-2">
                   <div className="text-center">
                     <div className="mb-1 text-xs font-bold text-brand-600 print-text">

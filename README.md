@@ -254,6 +254,11 @@ Open:
   - Real-time balance validation before submission
   - **Cancel Leave**: Users can cancel their own leaves until end date passes
 
+- **Bank Account Management**
+  - Add/Edit bank account details (Bank Name, Account Number, IFSC Code)
+  - Bank details automatically appear on salary slips
+  - Self-service update without admin intervention
+
 - **Self-Service Features**
   - View monthly attendance history
   - Track leave balance in real-time
@@ -312,6 +317,7 @@ Open:
 - `sick_base_month` (date)
 - `base_salary`, `hra`, `transport_allowance`, `other_allowance` (numeric)
 - `pf_deduction`, `tax_deduction`, `other_deduction` (numeric)
+- `bank_name`, `account_number`, `ifsc_code` (text, nullable)
 - `is_active` (boolean)
 
 ### attendance
