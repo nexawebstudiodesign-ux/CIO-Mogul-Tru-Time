@@ -39,7 +39,7 @@ class ApiService {
         const contentType = response.headers.get('content-type')
         const isJson = contentType && contentType.includes('application/json')
         data = isJson ? await response.json() : { message: (await response.text()) || 'Request failed' }
-      } catch (_) {
+      } catch {
         data = { message: 'Invalid response from server' }
       }
 

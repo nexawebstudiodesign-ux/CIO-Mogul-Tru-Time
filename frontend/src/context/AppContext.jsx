@@ -1,5 +1,6 @@
-import { createContext, useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { apiService } from '../utils/api'
+import { AppContext } from './AppContextValue'
 import {
   currentMonth,
   initialUsers,
@@ -7,8 +8,6 @@ import {
   initialAttendance,
   initialMonthlySalaries,
 } from '../data/initialData'
-
-export const AppContext = createContext(null)
 
 export function AppProvider({ children }) {
   const [users, setUsers] = useState(initialUsers)

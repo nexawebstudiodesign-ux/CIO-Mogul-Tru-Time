@@ -1,10 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../context/useApp'
 import { apiService } from '../utils/api'
 import {
-  getNextLeaveId,
-  getNextSalaryId,
   clampBalance,
   getEffectiveSickBalance,
 } from '../utils/helpers'
@@ -83,38 +81,21 @@ export default function AdminDashboard() {
   const [reportBusy, setReportBusy] = useState(false)
   const [reportMessage, setReportMessage] = useState('')
   const [newUserCredentials, setNewUserCredentials] = useState(null)
-  const [savedPasswords, setSavedPasswords] = useState(() => {
-    try {
-      const raw = localStorage.getItem('ciomogul_user_passwords')
-      return raw ? JSON.parse(raw) : {}
-    } catch {
-      return {}
-    }
-  })
 
-  const savePasswordForUser = (userId, password) => {
-    if (!userId || !password) return
-    setSavedPasswords((prev) => {
-      const next = { ...prev, [userId]: password }
-      localStorage.setItem('ciomogul_user_passwords', JSON.stringify(next))
-      return next
-    })
-  }
-
-  const toTitleCase = (value = '') => {
+  const toTitleCase = useCallback((value = '') => {
     const lower = String(value).toLowerCase()
     return lower ? lower.charAt(0).toUpperCase() + lower.slice(1) : ''
-  }
+  }, [])
 
-  const calculateDays = (from, to) => {
+  const calculateDays = useCallback((from, to) => {
     if (!from || !to) return 0
     const fromDate = new Date(from)
     const toDate = new Date(to)
     const diff = Math.floor((toDate - fromDate) / (1000 * 60 * 60 * 24)) + 1
     return Number.isFinite(diff) && diff > 0 ? diff : 0
-  }
+  }, [])
 
-  const normalizeUser = (user) => ({
+  const normalizeUser = useCallback((user) => ({
     ...user,
     id: user?.id,
     employeeId: user?.employeeId ?? user?.employee_id ?? '',
@@ -122,13 +103,12 @@ export default function AdminDashboard() {
     email: user?.email ?? '',
     casualBalance: user?.casualBalance ?? user?.casual_balance ?? 0,
     sickBalance: user?.sickBalance ?? user?.sick_balance ?? 0,
-    adminPassword: user?.adminPassword ?? user?.admin_password ?? null,
     status:
       user?.status ??
       (user?.isActive === false || user?.is_active === false ? 'Inactive' : 'Active'),
-  })
+  }), [])
 
-  const normalizeLeave = (leave) => {
+  const normalizeLeave = useCallback((leave) => {
     const relationUser = Array.isArray(leave?.users) ? leave.users[0] : leave?.users
     const from = leave?.from ?? leave?.from_date ?? ''
     const to = leave?.to ?? leave?.to_date ?? ''
@@ -146,9 +126,9 @@ export default function AdminDashboard() {
       days: leave?.days ?? calculateDays(from, to),
       status: toTitleCase(statusRaw),
     }
-  }
+  }, [calculateDays, toTitleCase])
 
-  const normalizeAttendance = (record) => {
+  const normalizeAttendance = useCallback((record) => {
     const totalMinutes = record?.totalMinutes ?? record?.total_minutes ?? 0
     const hours =
       record?.hours ??
@@ -165,7 +145,7 @@ export default function AdminDashboard() {
       linkedin: record?.linkedin ?? record?.linkedin_count ?? 0,
       followUps: record?.followUps ?? record?.follow_up_count ?? 0,
     }
-  }
+  }, [])
 
   const validateHolidayForm = () => {
     const errors = {}
@@ -206,8 +186,8 @@ export default function AdminDashboard() {
         setLeaves(normalizedLeaves)
         setAttendance(normalizedAttendance)
         setMonthlySalaries(normalizedSalaries)
-        if (normalizedUsers.length > 0 && !selectedUserId) {
-          setSelectedUserId(normalizedUsers[0].id)
+        if (normalizedUsers.length > 0) {
+          setSelectedUserId((prev) => prev || normalizedUsers[0].id)
         }
       } catch (err) {
         console.error('Failed to fetch data:', err)
@@ -217,7 +197,7 @@ export default function AdminDashboard() {
       }
     }
     fetchData()
-  }, [])
+  }, [normalizeAttendance, normalizeLeave, normalizeUser, setAttendance, setLeaves, setMonthlySalaries, setUsers])
 
   const filteredAttendance = useMemo(
     () =>
@@ -535,7 +515,7 @@ export default function AdminDashboard() {
           firstName,
           lastName,
           email: user.email,
-          password: user.adminPassword ?? savedPasswords[user.id] ?? '',
+          password: '',
           casualBalance: String(user.casualBalance ?? 0),
           sickBalance: String(user.sickBalance ?? 0),
         })
@@ -717,7 +697,6 @@ export default function AdminDashboard() {
         const newUser = await apiService.createUser(userData)
         setUsers((prev) => [newUser, ...prev])
         setSelectedUserId(newUser.id)
-        savePasswordForUser(newUser.id, userForm.password)
         setNewUserCredentials({
           name: newUser.name,
           employeeId: newUser.employeeId,
@@ -735,7 +714,6 @@ export default function AdminDashboard() {
         const updatedUser = await apiService.updateUser(selectedUserId, userData)
         if (userForm.password.trim()) {
           await apiService.resetPassword(selectedUserId, userForm.password)
-          savePasswordForUser(selectedUserId, userForm.password)
           toastMessage = 'User updated and password reset.'
         }
         setUsers((prev) =>
@@ -2072,14 +2050,14 @@ export default function AdminDashboard() {
                   <input
                     className="input-field"
                     placeholder="Password"
-                    type={modalMode === 'edit' ? 'text' : 'password'}
+                    type="password"
                     required={modalMode === 'add'}
                     value={userForm.password}
                     onChange={(event) => setUserForm((prev) => ({ ...prev, password: event.target.value }))}
                   />
                   <p className="mt-1 text-xs text-ink-300">
                     {modalMode === 'edit'
-                      ? 'Password is visible here and stays until you change it.'
+                      ? 'Leave blank to keep current password, or enter a new one to reset.'
                       : 'Minimum 6 characters'}
                   </p>
                   {userFormErrors.password && (

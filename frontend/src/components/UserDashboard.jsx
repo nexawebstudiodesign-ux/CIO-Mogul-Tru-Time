@@ -6,15 +6,12 @@ import { apiService } from '../utils/api'
 export default function UserDashboard() {
   const navigate = useNavigate()
   const {
-    users,
     loggedUser,
     setLoggedUser,
     loggedUserId,
     monthlySalaries,
     setMonthlySalaries,
-    leaves,
     setLeaves,
-    attendance,
     setAttendance,
     selectedMonth,
     setSelectedMonth,
@@ -253,17 +250,6 @@ export default function UserDashboard() {
     }
     
     return errors
-  }
-
-  const getNextLeaveId = (list) => {
-    let max = 0
-    list.forEach((leave) => {
-      const match = leave.id.match(/L-(\\d+)/)
-      if (match) {
-        max = Math.max(max, Number(match[1]))
-      }
-    })
-    return `L-${String(max + 1).padStart(4, '0')}`
   }
 
   // Handlers

@@ -8,7 +8,9 @@
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main",
-    "vercel-build": "tsc"
+    "vercel-build": "tsc",
+    "test": "jest --config jest.config.cjs --runInBand",
+    "test:watch": "jest --config jest.config.cjs --watch"
   },
   "dependencies": {
     "@nestjs/common": "^10.3.0",
