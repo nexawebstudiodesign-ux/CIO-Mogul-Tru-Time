@@ -238,14 +238,21 @@ export default function UserDashboard() {
       requestedDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1
     }
     
-    // Check leave balance
-    const leaveBalance = loggedUser?.leaveBalance || 0
+    // Check leave balance based on type
+    const casualBalance = loggedUser?.casualBalance ?? loggedUser?.casual_balance ?? 0
+    const sickBalance = loggedUser?.sickBalance ?? loggedUser?.sick_balance ?? 0
     
-    if (userLeaveForm.type === 'CASUAL' || userLeaveForm.type === 'SICK') {
-      if (leaveBalance === 0) {
-        errors.type = '⚠️ Leave balance is 0. Please select PAID leave option or contact Admin at info@theciomogul.com'
-      } else if (requestedDays > leaveBalance) {
-        errors.type = `⚠️ Insufficient balance: You have ${leaveBalance} days but requesting ${requestedDays} days. Please select PAID leave, reduce days, or contact Admin at info@theciomogul.com`
+    if (userLeaveForm.type === 'CASUAL') {
+      if (casualBalance === 0) {
+        errors.type = '⚠️ Casual leave balance is 0. Please select PAID leave option or contact Admin at info@theciomogul.com'
+      } else if (requestedDays > casualBalance) {
+        errors.type = `⚠️ Insufficient casual leave: You have ${casualBalance} days but requesting ${requestedDays} days. Please select PAID leave, reduce days, or contact Admin at info@theciomogul.com`
+      }
+    } else if (userLeaveForm.type === 'SICK') {
+      if (sickBalance === 0) {
+        errors.type = '⚠️ Sick leave balance is 0. Please select PAID leave option or contact Admin at info@theciomogul.com'
+      } else if (requestedDays > sickBalance) {
+        errors.type = `⚠️ Insufficient sick leave: You have ${sickBalance} days but requesting ${requestedDays} days. Please select PAID leave, reduce days, or contact Admin at info@theciomogul.com`
       }
     }
     
@@ -459,7 +466,9 @@ export default function UserDashboard() {
             <>
               <div className="stat-card">
                 <p className="text-xs uppercase tracking-wide text-ink-300">Leave Balance</p>
-                <p className="mt-1 text-2xl font-bold text-ink-500">{loggedUser?.leaveBalance || 0}</p>
+                <p className="mt-1 text-2xl font-bold text-ink-500">
+                  C: {loggedUser?.casualBalance ?? loggedUser?.casual_balance ?? 0} | S: {loggedUser?.sickBalance ?? loggedUser?.sick_balance ?? 0}
+                </p>
               </div>
               <div className="stat-card">
                 <p className="text-xs uppercase tracking-wide text-ink-300">Pending / Approved</p>
@@ -723,7 +732,10 @@ export default function UserDashboard() {
             <h2 className="section-title text-xl">Apply Leave</h2>
             <div className="mt-3 rounded-xl bg-blue-50 p-3">
               <p className="text-xs font-semibold text-blue-700 mb-1">Your Leave Balance</p>
-              <p className="text-2xl font-bold text-blue-900">{loggedUser?.leaveBalance || 0} days</p>
+              <p className="text-lg font-bold text-blue-900">
+                Casual: {loggedUser?.casualBalance ?? loggedUser?.casual_balance ?? 0} days | 
+                Sick: {loggedUser?.sickBalance ?? loggedUser?.sick_balance ?? 0} days
+              </p>
               <p className="text-xs text-blue-600 mt-1">💡 If balance is insufficient, select PAID leave</p>
             </div>
             <div className="mt-3 rounded-lg bg-amber-50 p-2 border border-amber-200">

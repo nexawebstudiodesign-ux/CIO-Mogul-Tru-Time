@@ -7,6 +7,7 @@ export default function AdminAuth() {
   const navigate = useNavigate()
   const { setIsAdminAuthorized, setLoggedUser, setLoggedUserId } = useApp()
 
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [authError, setAuthError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -17,7 +18,7 @@ export default function AdminAuth() {
     setLoading(true)
 
     try {
-      const data = await apiService.adminPasswordLogin(password)
+      const data = await apiService.adminEmailLogin(email, password)
 
       if (data.user?.role !== 'ADMIN') {
         throw new Error('Access denied. Not an admin.')
@@ -49,8 +50,16 @@ export default function AdminAuth() {
           <form className="mt-6 space-y-4" onSubmit={handleLogin}>
             <input
               className="input-field"
+              type="email"
+              placeholder="Admin email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+            <input
+              className="input-field"
               type="password"
-              placeholder="Admin password"
+              placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required

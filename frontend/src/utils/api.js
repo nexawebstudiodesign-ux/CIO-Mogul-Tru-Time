@@ -84,10 +84,10 @@ class ApiService {
     })
   }
 
-  async adminPasswordLogin(password) {
-    const data = await this.request('/auth/admin-password-login', {
+  async adminEmailLogin(email, password) {
+    const data = await this.request('/auth/email-login', {
       method: 'POST',
-      body: JSON.stringify({ password }),
+      body: JSON.stringify({ email, password }),
     })
 
     if (data.accessToken) {

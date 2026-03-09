@@ -2,8 +2,8 @@ import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/
 import { ConfigService } from '@nestjs/config';
 import { SupabaseService } from '../supabase/supabase.service';
 import { LoginDto } from './dto/login.dto';
+import { EmailLoginDto } from './dto/email-login.dto';
 import { AdminSignupDto } from './dto/admin-signup.dto';
-import { AdminPasswordLoginDto } from './dto/admin-password-login.dto';
 import * as bcrypt from 'bcryptjs';
 
 @Injectable()
@@ -43,7 +43,42 @@ export class AuthService {
         role: user.role,
         casualBalance: user.casual_balance,
         sickBalance: user.sick_balance,
-        leaveBalance: user.casual_balance, // backward compat for UserDashboard
+        leaveBalance: user.casual_balance,
+      },
+    };
+  }
+
+  async emailLogin(dto: EmailLoginDto) {
+    const { data: authData, error: authError } =
+      await this.supabaseService.authClient.auth.signInWithPassword({
+        email: dto.email,
+        password: dto.password,
+      });
+    if (authError || !authData.session?.access_token || !authData.user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const { data: user, error } = await this.supabaseService.client
+      .from('users')
+      .select('id,name,email,employee_id,role,casual_balance,sick_balance,is_active')
+      .eq('id', authData.user.id)
+      .maybeSingle();
+    
+    if (error || !user || !user.is_active) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    return {
+      accessToken: authData.session.access_token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        employeeId: user.employee_id,
+        role: user.role,
+        casualBalance: user.casual_balance,
+        sickBalance: user.sick_balance,
+        leaveBalance: user.casual_balance,
       },
     };
   }
@@ -124,77 +159,5 @@ export class AuthService {
     };
   }
 
-  async adminPasswordLogin(dto: AdminPasswordLoginDto) {
-    const adminEmail = this.configService.get<string>('ADMIN_DASHBOARD_EMAIL');
-    const adminPassword = this.configService.get<string>('ADMIN_DASHBOARD_PASSWORD');
 
-    if (!adminEmail) {
-      throw new BadRequestException('ADMIN_DASHBOARD_EMAIL is not configured');
-    }
-    if (!adminPassword) {
-      throw new BadRequestException('ADMIN_DASHBOARD_PASSWORD is not configured');
-    }
-
-    if (dto.password !== adminPassword) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
-    const { data: adminUser, error: adminUserError } = await this.supabaseService.client
-      .from('users')
-      .select('id,name,email,employee_id,role,casual_balance,sick_balance,is_active')
-      .eq('email', adminEmail)
-      .maybeSingle();
-
-    if (adminUserError || !adminUser || !adminUser.is_active || adminUser.role !== 'ADMIN') {
-      throw new UnauthorizedException('Access denied');
-    }
-
-    let { data: authData, error: authError } =
-      await this.supabaseService.authClient.auth.signInWithPassword({
-        email: adminEmail,
-        password: adminPassword,
-      });
-
-    if (authError || !authData.session?.access_token || !authData.user) {
-      const { error: syncError } = await this.supabaseService.client.auth.admin.updateUserById(
-        adminUser.id,
-        {
-          password: adminPassword,
-          email_confirm: true,
-        },
-      );
-
-      if (syncError) {
-        throw new UnauthorizedException('Invalid credentials');
-      }
-
-      ({ data: authData, error: authError } =
-        await this.supabaseService.authClient.auth.signInWithPassword({
-          email: adminEmail,
-          password: adminPassword,
-        }));
-    }
-
-    if (authError || !authData.session?.access_token || !authData.user) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
-    if (authData.user.id !== adminUser.id) {
-      throw new UnauthorizedException('Access denied');
-    }
-
-    return {
-      accessToken: authData.session.access_token,
-      user: {
-        id: adminUser.id,
-        name: adminUser.name,
-        email: adminUser.email,
-        employeeId: adminUser.employee_id,
-        role: adminUser.role,
-        casualBalance: adminUser.casual_balance,
-        sickBalance: adminUser.sick_balance,
-        leaveBalance: adminUser.casual_balance,
-      },
-    };
-  }
 }

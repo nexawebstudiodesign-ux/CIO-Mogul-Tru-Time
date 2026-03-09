@@ -291,7 +291,7 @@ export default function AdminDashboard() {
     })
   }, [filteredAttendance, users])
 
-  const activeUsers = useMemo(() => users.filter((user) => user.isActive !== false), [users])
+  const activeUsers = useMemo(() => users.filter((user) => user.isActive !== false && user.role !== 'ADMIN'), [users])
   const recycleUsers = useMemo(() => users.filter((user) => user.isActive === false), [users])
 
   const filteredMonthSummary = useMemo(() => {
@@ -943,18 +943,18 @@ export default function AdminDashboard() {
   }
 
   const handleAddLeaveBalance = async (leaveType) => {
-    if (!selectedLeaveUser?.id) {
-      showToast('Select a leave request first.', 'warning')
+    if (!selectedUser?.id) {
+      showToast('Select a user first.', 'warning')
       return
     }
 
-    const currentCasual = Number(selectedLeaveUser.casualBalance || 0)
-    const currentSick = Number(selectedLeaveUser.sickBalance || 0)
+    const currentCasual = Number(selectedUser.casualBalance || 0)
+    const currentSick = Number(selectedUser.sickBalance || 0)
     const nextCasual = leaveType === 'CASUAL' ? Math.min(currentCasual + 1, 12) : currentCasual
     const nextSick = leaveType === 'SICK' ? Math.min(currentSick + 1, 12) : currentSick
 
     try {
-      const updatedUser = await apiService.updateLeaveBalance(selectedLeaveUser.id, {
+      const updatedUser = await apiService.updateLeaveBalance(selectedUser.id, {
         casualBalance: nextCasual,
         sickBalance: nextSick,
       })
@@ -1151,709 +1151,449 @@ export default function AdminDashboard() {
           </div>
         </div>
       ) : (
-      <div className="dashboard-wrap">
-        <div className="mb-6 toolbar-panel">
-        <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-          <div className="flex-1">
-            <div className="flex items-center justify-between">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 rounded-xl">
+        {/* Top Header */}
+        <div className="bg-white border-b border-slate-200 shadow-sm">
+          <div className="max-w-[1800px] mx-auto px-6 py-4 rounded-xl">
+            <div className="flex items-center justify-between rounded-xl">
               <div>
-                <p className="text-sm uppercase tracking-[0.3em] text-ink-300">CIO Mogul</p>
-                <h1 className="section-title">Admin Performance Dashboard</h1>
-                <p className="mt-2 max-w-xl text-sm text-ink-300">
-                  Review all user records, drill into individual leave history, and track monthly compliance.
-                </p>
+                <h1 className="text-2xl font-bold text-slate-800">Admin Performance Dashboard</h1>
+                <p className="text-sm text-slate-500 mt-1">Manage employee records and track productivity</p>
               </div>
-              <button
-                onClick={() => {
-                  apiService.logout()
-                  setIsAdminAuthorized(false)
-                  navigate('/')
-                }}
-                className="btn-danger"
-              >
-                Logout
-              </button>
-            </div>
-          </div>
-          <div className="toolbar-panel flex w-full flex-col gap-3 md:w-auto md:min-w-[280px]">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-ink-300">Selected Month</span>
-              <input
-                type="month"
-                className="control-input font-semibold"
-                value={selectedMonth}
-                onChange={(event) => setSelectedMonth(event.target.value)}
-              />
-            </div>
-            <div className="h-px bg-sand-200" />
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-ink-300">Overall Compliance</span>
-              <span className="pill bg-brand-100 text-brand-700">{Math.round(
-                (filteredMonthSummary.reduce((sum, user) => sum + user.compliance, 0) / filteredMonthSummary.length) || 0,
-              )}%</span>
-            </div>
-          </div>
-        </div>
-        </div>
-        <div className="mt-8 grid gap-6 lg:grid-cols-[1.3fr_1fr]">
-          <section className="glass-panel rounded-3xl p-6 shadow-lift">
-            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-              <div>
-                <h2 className="section-title text-xl">All User Records</h2>
-                <p className="text-sm text-ink-300">Click a user to see leave and Tru Time details.</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <input
-                  type="text"
-                  placeholder="Search user"
-                  value={userSearch}
-                  onChange={(event) => setUserSearch(event.target.value)}
-                  className="control-input"
-                />
-                <span className="text-xs uppercase tracking-[0.2em] text-ink-300">Month</span>
-                <input
-                  type="month"
-                  className="control-input font-semibold"
-                  value={selectedMonth}
-                  onChange={(event) => setSelectedMonth(event.target.value)}
-                />
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-slate-600">Month:</span>
+                  <input
+                    type="month"
+                    className="px-3 py-2 border border-slate-300 rounded-lg text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                  />
+                </div>
+                <div className="px-4 py-2 bg-blue-50 rounded-lg border border-blue-200">
+                  <span className="text-xs text-slate-600">Overall Compliance</span>
+                  <p className="text-lg font-bold text-blue-600">{Math.round(
+                    (filteredMonthSummary.reduce((sum, user) => sum + user.compliance, 0) / filteredMonthSummary.length) || 0,
+                  )}%</p>
+                </div>
                 <button
-                  type="button"
                   onClick={handleExportCsv}
-                  className="btn-pill border border-sand-200 bg-white text-ink-500"
+                  className="px-4 py-2 bg-white border border-slate-300 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50"
                 >
                   Export CSV
                 </button>
+                <button
+                  onClick={() => {
+                    apiService.logout()
+                    setIsAdminAuthorized(false)
+                    navigate('/')
+                  }}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700"
+                >
+                  Logout
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content - Two Column Layout */}
+        <div className="max-w-[1800px] mx-auto px-6 py-6">
+          <div className="grid grid-cols-[65%_35%] gap-6">
+            {/* Left Panel - All User Records */}
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200">
+              <div className="p-6 border-b border-slate-200">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-800">All User Records</h2>
+                    <p className="text-sm text-slate-500 mt-1">Click a user to view details</p>
+                  </div>
+                  <button
+                    onClick={() => openUserModal('add')}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+                  >
+                    + Add User
+                  </button>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="text"
+                    placeholder="Search by name, email, or employee ID..."
+                    value={userSearch}
+                    onChange={(e) => setUserSearch(e.target.value)}
+                    className="flex-1 px-4 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-slate-50 border-b border-slate-200">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">User</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Entries</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Total Hours</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Avg Hours</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Compliance</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Casual</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Sick</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {filteredMonthSummary.map((user) => (
+                      <tr
+                        key={user.id}
+                        onClick={() => setSelectedUserId(user.id)}
+                        className={`cursor-pointer transition ${
+                          selectedUserId === user.id
+                            ? 'bg-blue-50 border-l-4 border-l-blue-600'
+                            : 'hover:bg-slate-50'
+                        }`}
+                      >
+                        <td className="px-6 py-4">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-800">{user.name}</p>
+                            <p className="text-xs text-slate-500">{user.employeeId || user.id}</p>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-slate-700">{user.entries}</td>
+                        <td className="px-6 py-4 text-sm text-slate-700">{user.totalHours.toFixed(1)}</td>
+                        <td className="px-6 py-4 text-sm text-slate-700">{user.avgHours.toFixed(1)}</td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-blue-600 rounded-full"
+                                style={{ width: `${user.compliance}%` }}
+                              />
+                            </div>
+                            <span className="text-sm font-medium text-slate-700">{user.compliance}%</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-slate-700">{user.casualBalance}</td>
+                        <td className="px-6 py-4 text-sm text-slate-700">{getEffectiveSickBalance(user, selectedMonth)}</td>
+                        <td className="px-6 py-4">
+                          <div className="flex gap-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setSelectedUserId(user.id)
+                                openUserModal('edit')
+                              }}
+                              className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setSelectedUserId(user.id)
+                                openUserModal('delete')
+                              }}
+                              className="px-3 py-1 text-xs font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
 
-            <div className="mt-6 overflow-x-auto overflow-hidden rounded-2xl border border-sand-200">
-              <div className="grid grid-cols-[1.2fr_0.7fr_0.7fr_0.7fr_0.6fr_0.6fr_0.6fr_0.9fr] bg-sand-50 px-4 py-4 text-xs uppercase tracking-[0.2em] text-ink-500 font-semibold border-b border-sand-200 min-w-[900px]">
-                <span>User</span>
-                <span>Entries</span>
-                <span>Total Hours</span>
-                <span>Avg Hours</span>
-                <span>Compliance %</span>
-                <span>Casual</span>
-                <span>Sick</span>
-                <span>Actions</span>
-              </div>
-              {filteredMonthSummary.map((user) => (
-                <div
-                  key={user.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setSelectedUserId(user.id)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedUserId(user.id) } }}
-                  className={`grid w-full grid-cols-[1.2fr_0.7fr_0.7fr_0.7fr_0.6fr_0.6fr_0.6fr_0.9fr] items-center border-t border-sand-200 px-4 py-4 text-left text-sm font-semibold text-ink-500 transition cursor-pointer ${
-                    selectedUserId === user.id 
-                      ? 'bg-brand-100 border-brand-300 border-l-4 border-l-brand-600' 
-                      : 'border-sand-100 hover:bg-sand-50/80'
-                  }`}
-                >
+            {/* Right Panel - Selected User Details */}
+            <div className="space-y-6 overflow-y-auto max-h-[calc(100vh-140px)]">
+              {/* Selected User Overview */}
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <div className="flex items-center justify-between mb-4">
                   <div>
-                    <p className="font-semibold text-ink-500">{user.name}</p>
-                    <p className="text-xs text-ink-300">{user.employeeId || user.id}</p>
+                    <h2 className="text-lg font-bold text-slate-800">{selectedUser?.name || 'Select a User'}</h2>
+                    <p className="text-sm text-slate-500">{selectedUser?.employeeId} · {selectedUser?.email}</p>
                   </div>
-                  <span className="font-semibold text-ink-500">{user.entries}</span>
-                  <span className="text-ink-400">{user.totalHours.toFixed(1)}</span>
-                  <span className="text-ink-400">{user.avgHours.toFixed(1)}</span>
-                  <span className="pill bg-brand-100 text-brand-700">{user.compliance}%</span>
-                  <span className="text-ink-400">{user.casualBalance}</span>
-                  <span className="text-ink-400">{getEffectiveSickBalance(user, selectedMonth)}</span>
-                  <span className="flex flex-wrap gap-2 text-xs font-semibold text-ink-400">
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        setSelectedUserId(user.id)
-                        openUserModal('edit')
-                      }}
-                      className="rounded-lg border border-sand-200 px-2 py-1"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        setSelectedUserId(user.id)
-                        openUserModal('delete')
-                      }}
-                      className="rounded-lg border border-sand-200 px-2 py-1"
-                    >
-                      Delete
-                    </button>
+                  <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full">
+                    {selectedUser?.status || 'Active'}
                   </span>
                 </div>
-              ))}
-            </div>
-            <div className="mt-4 flex flex-wrap gap-3">
-              <button
-                className="btn-primary"
-                onClick={() => openUserModal('add')}
-              >
-                Add user
-              </button>
-              <button
-                className="btn-secondary"
-                onClick={() => openUserModal('edit')}
-              >
-                Edit selected
-              </button>
-              <button
-                className="btn-secondary"
-                onClick={() => openUserModal('delete')}
-              >
-                Delete selected
-              </button>
-            </div>
+              </div>
 
-            {newUserCredentials && (
-              <div className="mt-4 rounded-2xl border border-brand-200 bg-brand-50 p-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm font-semibold text-brand-700">New employee created</p>
-                    <p className="text-xs text-ink-500 mt-1">Share these credentials with the employee for app login.</p>
-                    <p className="text-xs text-ink-500 mt-1">Employee ID: <span className="font-semibold">{newUserCredentials.employeeId}</span></p>
-                    <p className="text-xs text-ink-500">Password: <span className="font-semibold">{newUserCredentials.password}</span></p>
+              {/* Performance Summary */}
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h3 className="text-sm font-bold text-slate-800 mb-4">Performance Summary</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 bg-blue-50 rounded-lg">
+                    <p className="text-xs text-slate-600">Total Hours</p>
+                    <p className="text-2xl font-bold text-blue-600 mt-1">{userStats.totalHours.toFixed(1)}</p>
                   </div>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      className="rounded-lg bg-brand-600 px-3 py-1 text-xs font-semibold text-white"
-                      onClick={handleCopyCredentials}
-                    >
-                      Copy
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded-lg border border-sand-200 bg-white px-3 py-1 text-xs font-semibold text-ink-500"
-                      onClick={() => setNewUserCredentials(null)}
-                    >
-                      Dismiss
-                    </button>
+                  <div className="p-4 bg-green-50 rounded-lg">
+                    <p className="text-xs text-slate-600">Attendance</p>
+                    <p className="text-2xl font-bold text-green-600 mt-1">{performanceMetrics.attendancePercentage}%</p>
+                  </div>
+                  <div className="p-4 bg-purple-50 rounded-lg">
+                    <p className="text-xs text-slate-600">Leaves Taken</p>
+                    <p className="text-2xl font-bold text-purple-600 mt-1">{performanceMetrics.totalLeaveDays}</p>
+                  </div>
+                  <div className="p-4 bg-orange-50 rounded-lg">
+                    <p className="text-xs text-slate-600">Leave Balance</p>
+                    <p className="text-2xl font-bold text-orange-600 mt-1">{selectedUser?.casualBalance || 0} / {getEffectiveSickBalance(selectedUser, selectedMonth) || 0}</p>
                   </div>
                 </div>
               </div>
-            )}
 
-            <div className="mt-6 rounded-2xl border border-sand-200 p-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-ink-500">Recycle Bin (Admin only)</h3>
-                <span className="pill bg-sand-100 text-ink-400">{recycleUsers.length} users</span>
+              {/* Productivity Metrics */}
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h3 className="text-sm font-bold text-slate-800 mb-4">Productivity Metrics</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                    <span className="text-xs text-slate-600">Total Mails</span>
+                    <span className="text-lg font-bold text-slate-800">{performanceMetrics.totalMails}</span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                    <span className="text-xs text-slate-600">Data Entries</span>
+                    <span className="text-lg font-bold text-slate-800">{performanceMetrics.totalData}</span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                    <span className="text-xs text-slate-600">LinkedIn Posts</span>
+                    <span className="text-lg font-bold text-slate-800">{performanceMetrics.totalLinkedIn}</span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                    <span className="text-xs text-slate-600">Follow Ups</span>
+                    <span className="text-lg font-bold text-slate-800">{performanceMetrics.totalFollowUps}</span>
+                  </div>
+                </div>
               </div>
-              {recycleUsers.length === 0 ? (
-                <p className="mt-3 text-sm text-ink-300">No deleted users.</p>
-              ) : (
-                <div className="mt-3 space-y-2">
-                  {recycleUsers.map((user) => (
-                    <div
-                      key={user.id}
-                      className="flex items-center justify-between rounded-xl border border-sand-200 bg-white/70 px-3 py-2"
+
+              {/* Leave Requests */}
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-bold text-slate-800">Leave Requests</h3>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        if (!selectedUser?.id) {
+                          showToast('Select a user first', 'warning')
+                          return
+                        }
+                        handleAddLeaveBalance('CASUAL')
+                      }}
+                      className="px-2 py-1 bg-green-50 text-green-700 rounded-lg text-xs font-medium hover:bg-green-100"
                     >
-                      <button
-                        type="button"
-                        onClick={() => setSelectedUserId(user.id)}
-                        className="text-left"
-                      >
-                        <p className="text-sm font-semibold text-ink-500">{user.name}</p>
-                        <p className="text-xs text-ink-300">{user.employeeId || user.id}</p>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleUserRestore(user.id)}
-                        className="rounded-lg bg-brand-600 px-3 py-1 text-xs font-semibold text-white"
-                      >
-                        Restore
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleUserPermanentDelete(user.id)}
-                        className="ml-2 rounded-lg bg-red-600 px-3 py-1 text-xs font-semibold text-white hover:bg-red-700"
-                      >
-                        Delete Permanently
-                      </button>
+                      +1 Casual
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (!selectedUser?.id) {
+                          showToast('Select a user first', 'warning')
+                          return
+                        }
+                        handleAddLeaveBalance('SICK')
+                      }}
+                      className="px-2 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium hover:bg-blue-100"
+                    >
+                      +1 Sick
+                    </button>
+                    <button
+                      onClick={() => openLeaveModal('add')}
+                      className="px-3 py-1 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700"
+                    >
+                      + Add Leave
+                    </button>
+                  </div>
+                </div>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {visibleUserLeaves.slice(0, 5).map((leave) => (
+                    <div
+                      key={leave.id}
+                      onClick={() => setSelectedLeaveId(leave.id)}
+                      className={`p-3 rounded-lg border cursor-pointer ${
+                        selectedLeaveId === leave.id ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-slate-800">{leave.type}</p>
+                          <p className="text-xs text-slate-500">{leave.from} → {leave.to} ({leave.days} days)</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                            leave.status === 'Approved' ? 'bg-green-100 text-green-700' :
+                            leave.status === 'Rejected' ? 'bg-red-100 text-red-700' :
+                            'bg-yellow-100 text-yellow-700'
+                          }`}>
+                            {leave.status}
+                          </span>
+                          {leave.status === 'Pending' && (
+                            <div className="flex gap-1">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setSelectedLeaveId(leave.id)
+                                  handleLeaveApprove()
+                                }}
+                                className="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"
+                              >
+                                ✓
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setSelectedLeaveId(leave.id)
+                                  handleLeaveReject()
+                                }}
+                                className="px-2 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
-              )}
-            </div>
-          </section>
-
-          <section className="glass-panel rounded-3xl p-6 shadow-lift">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="section-title text-xl">{selectedUser?.name ?? 'User'} Overview</h2>
-                <p className="text-sm text-ink-300">{selectedUser?.employeeId || selectedUser?.id} · {selectedUser?.email}</p>
-              </div>
-              <span
-                className={`pill ${
-                  selectedUser?.status === 'Active'
-                    ? 'bg-brand-100 text-brand-700'
-                    : 'bg-sand-100 text-ink-300'
-                }`}
-              >
-                {selectedUser?.status}
-              </span>
-            </div>
-
-            <div className="mt-5 grid gap-4 sm:grid-cols-3">
-              <div className="rounded-2xl border border-sand-200 bg-white/70 p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-ink-300">Entries</p>
-                <p className="mt-2 text-2xl font-semibold text-ink-500">{userStats.entries}</p>
-              </div>
-              <div className="rounded-2xl border border-sand-200 bg-white/70 p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-ink-300">Avg Hours</p>
-                <p className="mt-2 text-2xl font-semibold text-ink-500">{userStats.avgHours.toFixed(1)}</p>
-              </div>
-              <div className="rounded-2xl border border-sand-200 bg-white/70 p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-ink-300">Compliance</p>
-                <p className="mt-2 text-2xl font-semibold text-ink-500">{userStats.compliance}%</p>
-                <div className="mt-3 h-2 overflow-hidden rounded-full bg-sand-100">
-                  <div
-                    className="h-full rounded-full bg-brand-500"
-                    style={{ width: `${userStats.compliance}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-6">
-              <div className="rounded-2xl border border-sand-200 p-4 mb-6 bg-white/70">
-                <h3 className="text-sm font-semibold text-ink-500">Monthly Reports</h3>
-                <p className="text-xs text-ink-300 mt-1">Compliance + payroll summary (choose month when clicked)</p>
-                <div className="mt-3 flex flex-col gap-2">
-                  <button
-                    className="rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
-                    onClick={handleDownloadMonthlyReport}
-                    disabled={reportBusy}
-                  >
-                    Monthly Reports
-                  </button>
-                  {reportMessage && <p className="text-xs text-ink-400">{reportMessage}</p>}
-                </div>
               </div>
 
-              <div className="rounded-2xl border border-sand-200 p-4 mb-6 bg-white/70">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-sm font-semibold text-ink-500">Public Holidays</h3>
-                    <p className="text-xs text-ink-300 mt-1">Visible to all users</p>
-                  </div>
-                  {selectedHolidayId && (
-                    <span className="pill bg-amber-100 text-amber-700">Editing</span>
-                  )}
-                </div>
-                <form className="mt-3 grid gap-2 sm:grid-cols-[0.6fr_1fr_auto]" onSubmit={handleHolidaySubmit}>
-                  <div>
-                    <input
-                      type="date"
-                      value={holidayForm.date}
-                      onChange={(event) =>
-                        setHolidayForm((prev) => ({ ...prev, date: event.target.value }))
-                      }
-                      className="w-full rounded-lg border border-sand-200 bg-white px-3 py-2 text-xs text-ink-500"
-                    />
-                    {holidayFormErrors.date && (
-                      <p className="mt-1 text-xs text-red-500">{holidayFormErrors.date}</p>
-                    )}
-                  </div>
-                  <div>
-                    <input
-                      type="text"
-                      value={holidayForm.description}
-                      onChange={(event) =>
-                        setHolidayForm((prev) => ({ ...prev, description: event.target.value }))
-                      }
-                      placeholder="Holiday description"
-                      className="w-full rounded-lg border border-sand-200 bg-white px-3 py-2 text-xs text-ink-500"
-                    />
-                    {holidayFormErrors.description && (
-                      <p className="mt-1 text-xs text-red-500">{holidayFormErrors.description}</p>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      type="submit"
-                      className="rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white"
-                    >
-                      {selectedHolidayId ? 'Update' : 'Add'}
-                    </button>
-                    {selectedHolidayId && (
-                      <button
-                        type="button"
-                        onClick={handleHolidayReset}
-                        className="rounded-lg border border-sand-200 px-3 py-2 text-xs font-semibold text-ink-500"
-                      >
-                        Clear
-                      </button>
-                    )}
-                  </div>
-                </form>
-                <div className="mt-3 space-y-2">
-                  {sortedHolidays.length === 0 ? (
-                    <p className="text-xs text-ink-300">No public holidays added yet.</p>
-                  ) : (
-                    sortedHolidays.map((holiday) => (
-                      <div
-                        key={holiday.id}
-                        className="flex items-center justify-between rounded-xl border border-sand-200 bg-white/70 px-3 py-2"
-                      >
-                        <div>
-                          <p className="text-xs font-semibold text-ink-500">{holiday.date}</p>
-                          <p className="text-xs text-ink-300">{holiday.description}</p>
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleHolidayEdit(holiday)}
-                            className="rounded-lg border border-sand-200 px-3 py-1 text-xs font-semibold text-ink-500"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleHolidayDelete(holiday.id)}
-                            className="rounded-lg bg-red-600 px-3 py-1 text-xs font-semibold text-white"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-ink-500">Tru Time Records</h3>
-                <button
-                  className="rounded-lg border border-sand-200 bg-white px-3 py-1 text-xs font-semibold text-ink-500"
-                  onClick={handleExportAttendanceCsv}
-                >
-                  Export CSV
-                </button>
-              </div>
-              <div className="mt-3 flex gap-2">
-                <input
-                  type="text"
-                  value={attendanceSearch}
-                  onChange={(event) => setAttendanceSearch(event.target.value)}
-                  placeholder="Search by employee ID/name/date"
-                  className="flex-1 rounded-lg border border-sand-200 bg-white px-3 py-1 text-xs text-ink-500"
-                />
-                <select
-                  className="rounded-lg border border-sand-200 bg-white px-2 py-1 text-xs font-semibold text-ink-500"
-                  value={attendanceStatusFilter}
-                  onChange={(event) => setAttendanceStatusFilter(event.target.value)}
-                >
-                  <option value="All">All Status</option>
-                  <option value="Compliant">Compliant</option>
-                  <option value="Non-compliant">Non-compliant</option>
-                </select>
-              </div>
-              <div className="mt-3 overflow-x-auto overflow-hidden rounded-2xl border border-sand-200">
-                <div className="grid grid-cols-[0.9fr_0.6fr_0.7fr_0.7fr_0.7fr_0.7fr] bg-sand-50 px-4 py-4 text-xs uppercase tracking-[0.2em] text-ink-500 font-semibold border-b border-sand-200 min-w-[700px]">
-                  <span>Date</span>
-                  <span>Hours</span>
-                  <span>Mails</span>
-                  <span>Data</span>
-                  <span>LinkedIn</span>
-                  <span>Follow Ups</span>
-                </div>
-                {userAttendance.map((record) => (
-                  <div
-                    key={`${record.userId}-${record.date}`}
-                    className="grid grid-cols-[0.9fr_0.6fr_0.7fr_0.7fr_0.7fr_0.7fr] items-center border-t border-sand-200 px-4 py-4 text-sm font-semibold text-ink-500"
-                  >
-                    <span className="font-semibold text-ink-500">{record.date}</span>
-                    <span className="text-ink-400">{record.hours.toFixed(1)}</span>
-                    <span className="text-ink-400">{record.mails}</span>
-                    <span className="text-ink-400">{record.data}</span>
-                    <span className="text-ink-400">{record.linkedin}</span>
-                    <span className="text-ink-400">{record.followUps}</span>
-                  </div>
-                ))}
-                {userAttendance.length === 0 && (
-                  <div className="px-4 py-6 text-sm text-ink-300">No Tru Time records for this month.</div>
-                )}
-              </div>
-              <p className="mt-2 text-xs text-ink-300">Global matches this month: {globalAttendanceRows.length}</p>
-            </div>
-
-            <div className="mt-6">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-ink-500">Leaves</h3>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={leaveSearch}
-                    onChange={(event) => setLeaveSearch(event.target.value)}
-                    placeholder="Search by employee ID/name/type"
-                    className="rounded-lg border border-sand-200 bg-white px-2 py-1 text-xs text-ink-500"
-                  />
-                  <select
-                    className="rounded-lg border border-sand-200 bg-white px-2 py-1 text-xs font-semibold text-ink-500"
-                    value={leaveStatusFilter}
-                    onChange={(event) => setLeaveStatusFilter(event.target.value)}
-                  >
-                    <option value="All">All</option>
-                    <option value="Pending">Pending</option>
-                    <option value="Approved">Approved</option>
-                    <option value="Rejected">Rejected</option>
-                  </select>
+              {/* Monthly Salary */}
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-bold text-slate-800">Monthly Salary</h3>
                   <button
-                    className="rounded-lg bg-brand-600 px-3 py-1 text-xs font-semibold text-white"
-                    onClick={() => openLeaveModal('add')}
-                  >
-                    Add leave
-                  </button>
-                  <button
-                    className="rounded-lg border border-sand-200 px-3 py-1 text-xs font-semibold text-ink-400"
-                    onClick={() => openLeaveModal('edit')}
-                  >
-                    Edit leave
-                  </button>
-                  <button
-                    className="rounded-lg border border-sand-200 px-3 py-1 text-xs font-semibold text-ink-400"
-                    onClick={() => openLeaveModal('delete')}
-                  >
-                    Delete leave
-                  </button>
-                  <button
-                    className="rounded-lg bg-green-600 px-3 py-1 text-xs font-semibold text-white"
-                    onClick={handleLeaveApprove}
-                  >
-                    Approve
-                  </button>
-                  <button
-                    className="rounded-lg bg-red-600 px-3 py-1 text-xs font-semibold text-white"
-                    onClick={handleLeaveReject}
-                  >
-                    Reject
-                  </button>
-                  <button
-                    className="rounded-lg border border-sand-200 bg-white px-3 py-1 text-xs font-semibold text-ink-500"
-                    onClick={handleExportLeavesCsv}
-                  >
-                    Export CSV
-                  </button>
-                </div>
-              </div>
-              <p className="mt-2 text-xs text-ink-300">Global matches this month: {globalLeaveRows.length}</p>
-              <div className="mt-3 rounded-2xl border border-sand-200 bg-white/70 p-4">
-                <h4 className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-500">Selected Leave Request</h4>
-                {selectedLeave ? (
-                  <div className="mt-2 space-y-2 text-sm text-ink-500">
-                    <p>
-                      <span className="font-semibold">Candidate:</span> {selectedLeaveUser?.name || selectedLeave.name || 'Unknown'}
-                    </p>
-                    <p>
-                      <span className="font-semibold">Employee ID:</span> {selectedLeaveUser?.employeeId || selectedLeave.userId}
-                    </p>
-                    <p>
-                      <span className="font-semibold">Status:</span> {selectedLeave.status}
-                    </p>
-                    <div className="flex items-center gap-3 pt-1">
-                      <span className="text-xs text-ink-300">
-                        Balance — Casual: {selectedLeaveUser?.casualBalance ?? 0}, Sick: {selectedLeaveUser?.sickBalance ?? 0}
-                      </span>
-                      <button
-                        className="rounded-lg border border-sand-200 bg-white px-2 py-1 text-xs font-semibold text-ink-500"
-                        onClick={() => handleAddLeaveBalance('CASUAL')}
-                      >
-                        +1 Casual
-                      </button>
-                      <button
-                        className="rounded-lg border border-sand-200 bg-white px-2 py-1 text-xs font-semibold text-ink-500"
-                        onClick={() => handleAddLeaveBalance('SICK')}
-                      >
-                        +1 Sick
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="mt-2 text-xs text-ink-300">Select a leave row to view candidate and leave balance.</p>
-                )}
-              </div>
-              <div className="mt-3 overflow-x-auto overflow-hidden rounded-2xl border border-sand-200">
-                <div className="grid grid-cols-[1fr_0.8fr_0.6fr_0.6fr] bg-sand-50 px-4 py-4 text-xs uppercase tracking-[0.2em] text-ink-500 font-semibold border-b border-sand-200 min-w-[600px]">
-                  <span>Type</span>
-                  <span>Date Range</span>
-                  <span>Days</span>
-                  <span>Status</span>
-                </div>
-                {visibleUserLeaves.map((leave) => (
-                  <button
-                    type="button"
-                    key={leave.id}
-                    onClick={() => setSelectedLeaveId(leave.id)}
-                    className={`grid w-full grid-cols-[1fr_0.8fr_0.6fr_0.6fr] items-center border-t border-sand-200 px-4 py-4 text-left text-sm font-semibold text-ink-500 transition ${
-                      selectedLeaveId === leave.id ? 'bg-brand-50/80' : 'hover:bg-sand-50/80'
-                    }`}
-                  >
-                    <span className="font-semibold text-ink-500">{leave.type}</span>
-                    <span className="text-ink-400">{leave.from} → {leave.to}</span>
-                    <span className="text-ink-400">{leave.days}</span>
-                    <span
-                      className={`pill ${
-                        leave.status === 'Approved'
-                          ? 'bg-green-100 text-green-700'
-                          : leave.status === 'Rejected'
-                          ? 'bg-red-100 text-red-700'
-                          : 'bg-yellow-100 text-yellow-700'
-                      }`}
-                    >
-                      {leave.status}
-                    </span>
-                  </button>
-                ))}
-                {visibleUserLeaves.length === 0 && (
-                  <div className="px-4 py-6 text-sm text-ink-300">No leave records for this month.</div>
-                )}
-              </div>
-            </div>
-
-            <div className="mt-6">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-ink-500">Monthly Salary</h3>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={salarySearch}
-                    onChange={(event) => setSalarySearch(event.target.value)}
-                    placeholder="Search by employee ID/name"
-                    className="rounded-lg border border-sand-200 bg-white px-2 py-1 text-xs text-ink-500"
-                  />
-                  <button
-                    className="rounded-lg bg-brand-600 px-3 py-1 text-xs font-semibold text-white"
                     onClick={() => openSalaryModal('edit')}
+                    className="px-3 py-1 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700"
                   >
-                    {monthlySalaries.find((s) => s.userId === selectedUserId && s.month === selectedMonth)
-                      ? 'Edit Salary'
-                      : 'Set Salary'}
-                  </button>
-                  <button
-                    className="rounded-lg border border-sand-200 bg-white px-3 py-1 text-xs font-semibold text-ink-500"
-                    onClick={handleExportSalaryCsv}
-                  >
-                    Export CSV
+                    {monthlySalaries.find((s) => s.userId === selectedUserId && s.month === selectedMonth) ? 'Edit' : 'Set'} Salary
                   </button>
                 </div>
-              </div>
-              <p className="mt-2 text-xs text-ink-300">Global salary matches this month: {globalSalaryRows.length}</p>
-              <div className="mt-3 rounded-2xl border border-sand-200 p-4">
                 {monthlySalaries.find((s) => s.userId === selectedUserId && s.month === selectedMonth) ? (
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-ink-400">Base Salary</span>
-                      <span className="font-semibold text-ink-500">
-                        ₹{monthlySalaries
-                          .find((s) => s.userId === selectedUserId && s.month === selectedMonth)
-                          ?.baseSalary.toLocaleString()}
-                      </span>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-600">Base Salary</span>
+                      <span className="font-semibold text-slate-800">₹{monthlySalaries.find((s) => s.userId === selectedUserId && s.month === selectedMonth)?.baseSalary.toLocaleString()}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-ink-400">Performance Bonus</span>
-                      <span className="font-semibold text-green-700">
-                        ₹{monthlySalaries
-                          .find((s) => s.userId === selectedUserId && s.month === selectedMonth)
-                          ?.performanceBonus.toLocaleString()}
-                      </span>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-600">Performance Bonus</span>
+                      <span className="font-semibold text-green-600">₹{monthlySalaries.find((s) => s.userId === selectedUserId && s.month === selectedMonth)?.performanceBonus.toLocaleString()}</span>
                     </div>
-                    <div className="border-t border-sand-200 pt-2">
-                      <div className="flex justify-between font-bold">
-                        <span className="text-ink-500">Net Salary</span>
-                        <span className="text-brand-600">
-                          ₹{(() => {
-                            const sal = monthlySalaries.find(
-                              (s) => s.userId === selectedUserId && s.month === selectedMonth
-                            )
-                            if (!sal) return '0'
-                            const gross =
-                              sal.baseSalary +
-                              sal.hra +
-                              sal.transportAllowance +
-                              sal.otherAllowance +
-                              sal.performanceBonus
-                            const deductions = sal.pfDeduction + sal.taxDeduction + sal.otherDeduction
-                            return (gross - deductions).toLocaleString()
-                          })()}
-                        </span>
+                    <div className="pt-2 border-t border-slate-200">
+                      <div className="flex justify-between">
+                        <span className="text-sm font-bold text-slate-800">Net Salary</span>
+                        <span className="text-lg font-bold text-blue-600">₹{(() => {
+                          const sal = monthlySalaries.find((s) => s.userId === selectedUserId && s.month === selectedMonth)
+                          if (!sal) return '0'
+                          const gross = sal.baseSalary + sal.hra + sal.transportAllowance + sal.otherAllowance + sal.performanceBonus
+                          const deductions = sal.pfDeduction + sal.taxDeduction + sal.otherDeduction
+                          return (gross - deductions).toLocaleString()
+                        })()}</span>
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm text-ink-300">No salary set for this month.</p>
+                  <p className="text-sm text-slate-500">No salary set for this month</p>
                 )}
               </div>
-            </div>
 
-            <div className="mt-6">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-ink-500">Performance Summary</h3>
+              {/* Monthly Reports */}
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h3 className="text-sm font-bold text-slate-800 mb-4">Monthly Reports</h3>
                 <button
-                  className="rounded-lg bg-brand-600 px-3 py-1 text-xs font-semibold text-white"
                   onClick={() => setShowUserSalarySlip(true)}
+                  className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
                 >
                   View Salary Slip
                 </button>
               </div>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="rounded-2xl border border-sand-200 bg-gradient-to-br from-blue-50 to-white p-4">
-                  <p className="text-xs uppercase tracking-[0.2em] text-blue-600">Total Hours</p>
-                  <p className="mt-2 text-2xl font-bold text-blue-700">{userStats.totalHours.toFixed(1)}</p>
-                  <p className="mt-1 text-xs text-ink-300">This Month</p>
-                </div>
-                <div className="rounded-2xl border border-sand-200 bg-gradient-to-br from-green-50 to-white p-4">
-                  <p className="text-xs uppercase tracking-[0.2em] text-green-600">Attendance</p>
-                  <p className="mt-2 text-2xl font-bold text-green-700">{performanceMetrics.attendancePercentage}%</p>
-                  <p className="mt-1 text-xs text-ink-300">{userStats.entries} days worked</p>
-                </div>
-                <div className="rounded-2xl border border-sand-200 bg-gradient-to-br from-purple-50 to-white p-4">
-                  <p className="text-xs uppercase tracking-[0.2em] text-purple-600">Leaves Taken</p>
-                  <p className="mt-2 text-2xl font-bold text-purple-700">{performanceMetrics.totalLeaveDays}</p>
-                  <p className="mt-1 text-xs text-ink-300">{performanceMetrics.approvedLeaves} leave(s)</p>
-                </div>
-                <div className="rounded-2xl border border-sand-200 bg-gradient-to-br from-orange-50 to-white p-4">
-                  <p className="text-xs uppercase tracking-[0.2em] text-orange-600">Leave Balance</p>
-                  <div className="mt-2 flex items-center justify-between gap-3">
-                    <div className="text-center">
-                      <p className="text-2xl font-bold text-orange-700">{selectedUser?.casualBalance || 0}</p>
-                      <p className="text-xs text-ink-400">Casual</p>
+
+              {/* Public Holidays */}
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h3 className="text-sm font-bold text-slate-800 mb-4">Public Holidays</h3>
+                <form className="space-y-3" onSubmit={handleHolidaySubmit}>
+                  <input
+                    type="date"
+                    value={holidayForm.date}
+                    onChange={(e) => setHolidayForm((prev) => ({ ...prev, date: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                  />
+                  <input
+                    type="text"
+                    value={holidayForm.description}
+                    onChange={(e) => setHolidayForm((prev) => ({ ...prev, description: e.target.value }))}
+                    placeholder="Holiday description"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button
+                    type="submit"
+                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+                  >
+                    {selectedHolidayId ? 'Update' : 'Add'} Holiday
+                  </button>
+                </form>
+                <div className="mt-4 space-y-2 max-h-40 overflow-y-auto">
+                  {sortedHolidays.map((holiday) => (
+                    <div key={holiday.id} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
+                      <div>
+                        <p className="text-xs font-medium text-slate-800">{holiday.date}</p>
+                        <p className="text-xs text-slate-500">{holiday.description}</p>
+                      </div>
+                      <button
+                        onClick={() => handleHolidayDelete(holiday.id)}
+                        className="text-xs text-red-600 hover:text-red-700"
+                      >
+                        Delete
+                      </button>
                     </div>
-                    <div className="text-center">
-                      <p className="text-2xl font-bold text-orange-700">{getEffectiveSickBalance(selectedUser, selectedMonth) || 0}</p>
-                      <p className="text-xs text-ink-400">Sick</p>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </div>
-              
-              <div className="mt-3 rounded-2xl border border-sand-200 p-4 bg-white/70">
-                <h4 className="text-xs font-semibold text-ink-500 uppercase tracking-[0.2em] mb-3">Productivity Metrics</h4>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  <div>
-                    <p className="text-xs text-ink-400">Total Mails</p>
-                    <p className="mt-1 text-xl font-bold text-brand-600">{performanceMetrics.totalMails}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-ink-400">Data Entries</p>
-                    <p className="mt-1 text-xl font-bold text-brand-600">{performanceMetrics.totalData}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-ink-400">LinkedIn Posts</p>
-                    <p className="mt-1 text-xl font-bold text-brand-600">{performanceMetrics.totalLinkedIn}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-ink-400">Follow Ups</p>
-                    <p className="mt-1 text-xl font-bold text-brand-600">{performanceMetrics.totalFollowUps}</p>
-                  </div>
+
+              {/* Tru Time Records */}
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-bold text-slate-800">Tru Time Records</h3>
+                  <button
+                    onClick={handleExportAttendanceCsv}
+                    className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100"
+                  >
+                    Export CSV
+                  </button>
+                </div>
+                <div className="space-y-3 mb-4">
+                  <input
+                    type="text"
+                    value={attendanceSearch}
+                    onChange={(e) => setAttendanceSearch(e.target.value)}
+                    placeholder="Search by date..."
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                  />
+                  <select
+                    value={attendanceStatusFilter}
+                    onChange={(e) => setAttendanceStatusFilter(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="All">All Status</option>
+                    <option value="Compliant">Compliant</option>
+                    <option value="Non-compliant">Non-compliant</option>
+                  </select>
+                </div>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {userAttendance.map((record) => (
+                    <div key={`${record.userId}-${record.date}`} className="p-3 bg-slate-50 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-slate-800">{record.date}</span>
+                        <span className="text-sm font-bold text-blue-600">{record.hours.toFixed(1)}h</span>
+                      </div>
+                      <div className="grid grid-cols-4 gap-2 mt-2 text-xs text-slate-600">
+                        <div>Mails: {record.mails}</div>
+                        <div>Data: {record.data}</div>
+                        <div>LinkedIn: {record.linkedin}</div>
+                        <div>Follow-ups: {record.followUps}</div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
-          </section>
+          </div>
         </div>
       </div>
       )}
@@ -2057,8 +1797,8 @@ export default function AdminDashboard() {
 
       {showUserModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="glass-panel w-full max-w-lg rounded-3xl p-6 shadow-lift">
-            <div className="flex items-center justify-between">
+          <div className="glass-panel w-full max-w-2xl max-h-[90vh] rounded-3xl shadow-lift flex flex-col">
+            <div className="flex items-center justify-between p-6 border-b border-sand-200">
               <h3 className="text-lg font-semibold text-ink-500">
                 {modalMode === 'add' && 'Add User'}
                 {modalMode === 'edit' && 'Edit User'}
@@ -2071,6 +1811,7 @@ export default function AdminDashboard() {
                 Close
               </button>
             </div>
+            <div className="overflow-y-auto p-6">
             {modalMode !== 'delete' ? (
               <form className="mt-4 grid gap-3" onSubmit={handleUserSubmit}>
                 <div>
@@ -2219,6 +1960,7 @@ export default function AdminDashboard() {
                 </button>
               </div>
             )}
+            </div>
           </div>
         </div>
       )}
