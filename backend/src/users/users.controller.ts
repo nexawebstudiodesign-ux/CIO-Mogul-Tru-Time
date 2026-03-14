@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -16,7 +16,11 @@ export class UsersController {
 
   @Get('me')
   getMe(@Req() req: { user?: { id?: string } }) {
-    return this.usersService.getMe(req.user?.id ?? '');
+    const userId = req.user?.id
+    if (!userId) {
+      throw new UnauthorizedException('Invalid session')
+    }
+    return this.usersService.getMe(userId)
   }
 
   @Post()

@@ -1151,7 +1151,7 @@ export default function AdminDashboard() {
           </div>
         </div>
       ) : (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 rounded-xl">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 rounded-3xl overflow-hidden">
         {/* Top Header */}
         <div className="bg-white border-b border-slate-200 shadow-sm">
           <div className="max-w-[1800px] mx-auto px-6 py-4 rounded-xl">
@@ -1600,8 +1600,8 @@ export default function AdminDashboard() {
 
       {showSalaryModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="glass-panel w-full max-w-2xl rounded-3xl p-6 shadow-lift">
-            <div className="flex items-center justify-between">
+          <div className="glass-panel w-full max-w-2xl max-h-[95vh] rounded-3xl shadow-lift overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-slate-200">
               <div>
                 <h3 className="text-lg font-semibold text-ink-500">
                   {monthlySalaries.find((s) => s.userId === selectedUserId && s.month === salaryForm.month)
@@ -1625,7 +1625,8 @@ export default function AdminDashboard() {
                 </p>
               </div>
             )}
-            <form className="mt-4 grid gap-4 sm:grid-cols-2" onSubmit={handleSalarySubmit}>
+            <div className="overflow-y-auto max-h-[74vh] p-4">
+              <form className="grid gap-4 sm:grid-cols-2" onSubmit={handleSalarySubmit}>
               <div className="sm:col-span-2">
                 <label className="text-xs font-semibold text-ink-400">Salary Month <span className="text-red-500">*</span></label>
                 <input
@@ -1791,6 +1792,7 @@ export default function AdminDashboard() {
                 </button>
               </div>
             </form>
+            </div>
           </div>
         </div>
       )}

@@ -49,20 +49,31 @@ export default function SalarySlip() {
     [monthlySalaries, loggedUserId, salarySlipMonth],
   )
 
-  const baseSalary = monthlySalary?.baseSalary || loggedUser?.baseSalary || 0
-  const hra = monthlySalary?.hra || loggedUser?.hra || 0
-  const transportAllowance = monthlySalary?.transportAllowance || loggedUser?.transportAllowance || 0
-  const otherAllowance = monthlySalary?.otherAllowance || loggedUser?.otherAllowance || 0
+  const maybeLoggedUser = loggedUser || (() => {
+    const saved = localStorage.getItem('ciomogul_user')
+    if (!saved) return null
+    try {
+      return JSON.parse(saved)
+    } catch {
+      return null
+    }
+  })()
+
+  const userForSlip = maybeLoggedUser || loggedUser
+  const baseSalary = monthlySalary?.baseSalary || userForSlip?.baseSalary || 0
+  const hra = monthlySalary?.hra || userForSlip?.hra || 0
+  const transportAllowance = monthlySalary?.transportAllowance || userForSlip?.transportAllowance || 0
+  const otherAllowance = monthlySalary?.otherAllowance || userForSlip?.otherAllowance || 0
   const performanceBonus = monthlySalary?.performanceBonus || 0
-  const pfDeduction = monthlySalary?.pfDeduction || loggedUser?.pfDeduction || 0
-  const taxDeduction = monthlySalary?.taxDeduction || loggedUser?.taxDeduction || 0
-  const otherDeduction = monthlySalary?.otherDeduction || loggedUser?.otherDeduction || 0
+  const pfDeduction = monthlySalary?.pfDeduction || userForSlip?.pfDeduction || 0
+  const taxDeduction = monthlySalary?.taxDeduction || userForSlip?.taxDeduction || 0
+  const otherDeduction = monthlySalary?.otherDeduction || userForSlip?.otherDeduction || 0
 
   const grossEarnings = baseSalary + hra + transportAllowance + otherAllowance + performanceBonus
   const totalDeductions = pfDeduction + taxDeduction + otherDeduction
   const netSalary = grossEarnings - totalDeductions
 
-  if (!loggedUser) {
+  if (!maybeLoggedUser && !loggedUserId) {
     return (
       <div className="min-h-screen p-6 md:p-10">
         <div className="mx-auto max-w-lg">

@@ -367,29 +367,81 @@ export class UsersService {
   }
 
   async getMe(userId: string) {
-    await this.applyMonthlyAccrualForUser(userId);
-
-    const { data: user, error } = await this.supabaseService.client
-      .from('users')
-      .select('id,name,email,employee_id,role,casual_balance,sick_balance,bank_name,account_number,ifsc_code,is_active')
-      .eq('id', userId)
-      .maybeSingle();
-    if (error || !user) {
+    if (!userId) {
       throw new NotFoundException('User not found');
     }
+
+    let user: {
+      id: string
+      name: string
+      email: string
+      employee_id: string
+      role: string
+      casual_balance: number
+      sick_balance: number
+      bank_name?: string
+      account_number?: string
+      ifsc_code?: string
+      is_active: boolean
+    } | null = null
+
+    try {
+      const { data, error } = await this.supabaseService.client
+        .from('users')
+        .select('id,name,email,employee_id,role,casual_balance,sick_balance,bank_name,account_number,ifsc_code,is_active')
+        .eq('id', userId)
+        .maybeSingle()
+
+      if (error) {
+        console.warn('Warning: users.getMe DB query error', error)
+      } else {
+        user = data as any
+      }
+    } catch (e) {
+      console.warn('Warning: users.getMe unexpected query exception', e)
+    }
+
+    if (user) {
+      await this.applyMonthlyAccrualForUser(userId)
+      return {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        employeeId: user.employee_id,
+        role: user.role,
+        casualBalance: user.casual_balance,
+        sickBalance: user.sick_balance,
+        leaveBalance: user.casual_balance,
+        bankName: user.bank_name,
+        accountNumber: user.account_number,
+        ifscCode: user.ifsc_code,
+        isActive: user.is_active,
+      }
+    }
+
+    const { data: authData, error: authError } =
+      await this.supabaseService.client.auth.admin.getUserById(userId);
+    if (authError || !authData) {
+      throw new NotFoundException('User not found');
+    }
+    const authUser = (authData as any).user ? (authData as any).user : authData;
+    if (!authUser) {
+      throw new NotFoundException('User not found');
+    }
+
     return {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      employeeId: user.employee_id,
-      role: user.role,
-      casualBalance: user.casual_balance,
-      sickBalance: user.sick_balance,
-      leaveBalance: user.casual_balance,
-      bankName: user.bank_name,
-      accountNumber: user.account_number,
-      ifscCode: user.ifsc_code,
-      isActive: user.is_active,
+      id: authUser.id,
+      name: authUser.user_metadata?.name ?? authUser.email ?? 'Unknown',
+      email: authUser.email,
+      employeeId: authUser.user_metadata?.employee_id ?? '',
+      role: String(authUser.user_metadata?.role ?? 'USER').toUpperCase(),
+      casualBalance: 12,
+      sickBalance: 12,
+      leaveBalance: 12,
+      bankName: null,
+      accountNumber: null,
+      ifscCode: null,
+      isActive: true,
     };
   }
 

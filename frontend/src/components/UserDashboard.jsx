@@ -21,6 +21,67 @@ export default function UserDashboard() {
     publicHolidays,
   } = useApp()
 
+  const normalizeAttendanceRecord = (record) => ({
+    id: record?.id,
+    userId: record?.userId ?? record?.user_id ?? loggedUserId,
+    date: record?.date ?? '',
+    hours:
+      record?.hours ??
+      (Number.isFinite(Number(record?.total_minutes))
+        ? Math.round((Number(record.total_minutes) / 60) * 10) / 10
+        : 0),
+    mails: record?.mails ?? record?.mails_count ?? 0,
+    data: record?.data ?? record?.data_count ?? 0,
+    linkedin: record?.linkedin ?? record?.linkedin_count ?? 0,
+    followUps: record?.followUps ?? record?.follow_up_count ?? 0,
+  })
+
+  const normalizeLeaveRecord = (leave) => {
+    const from = leave?.from ?? leave?.from_date ?? ''
+    const to = leave?.to ?? leave?.to_date ?? ''
+    const days = leave?.days ?? (from && to ? Math.floor((new Date(to) - new Date(from)) / (1000 * 60 * 60 * 24)) + 1 : 0)
+    return {
+      id: leave?.id,
+      userId: leave?.userId ?? leave?.user_id ?? loggedUserId,
+      type: leave?.type ?? leave?.leave_type ?? 'UNKNOWN',
+      from,
+      to,
+      days,
+      status: String(leave?.status ?? 'PENDING').toUpperCase(),
+      reason: leave?.reason ?? '',
+    }
+  }
+
+  const refreshMyAttendance = async () => {
+    if (!loggedUserId) return
+    try {
+      const attendanceRows = await apiService.getMyAttendance()
+      if (Array.isArray(attendanceRows)) {
+        setAttendance(attendanceRows.map(normalizeAttendanceRecord))
+      }
+    } catch (error) {
+      console.error('Failed to refresh user attendance:', error)
+    }
+  }
+
+  const refreshMyLeaves = async () => {
+    if (!loggedUserId) return
+    try {
+      const leavesRows = await apiService.getMyLeaves()
+      if (Array.isArray(leavesRows)) {
+        setLeaves(leavesRows.map(normalizeLeaveRecord))
+      }
+    } catch (error) {
+      console.error('Failed to refresh user leaves:', error)
+    }
+  }
+
+  useEffect(() => {
+    if (!loggedUserId) return
+    refreshMyAttendance()
+    refreshMyLeaves()
+  }, [loggedUserId, selectedMonth])
+
   useEffect(() => {
     if (!loggedUserId || !selectedMonth) {
       return
@@ -272,7 +333,7 @@ export default function UserDashboard() {
       const dateStr = userAttendanceForm.date
       const loginDateTime = new Date(`${dateStr}T${userAttendanceForm.login}:00`)
       const logoutDateTime = new Date(`${dateStr}T${userAttendanceForm.logout}:00`)
-      
+
       const attendanceData = {
         date: dateStr,
         loginTime: loginDateTime.toISOString(),
@@ -282,21 +343,36 @@ export default function UserDashboard() {
         linkedinCount: Number(userAttendanceForm.linkedin),
         followUpCount: Number(userAttendanceForm.followUps),
       }
-      
-      await apiService.createAttendance(attendanceData)
-      
-      const hours = Math.round(((logoutDateTime - loginDateTime) / 3600000) * 10) / 10
-      const newRecord = {
-        userId: loggedUserId,
-        date: dateStr,
-        hours,
-        mails: Number(userAttendanceForm.mails),
-        data: Number(userAttendanceForm.data),
-        linkedin: Number(userAttendanceForm.linkedin),
-        followUps: Number(userAttendanceForm.followUps),
+
+      const savedAttendance = await apiService.createAttendance(attendanceData)
+
+      const normalizedRecord = {
+        id: savedAttendance?.id,
+        userId: savedAttendance?.userId ?? savedAttendance?.user_id ?? loggedUserId,
+        date: savedAttendance?.date ?? dateStr,
+        hours:
+          Number.isFinite(Number(savedAttendance?.hours))
+            ? Number(savedAttendance.hours)
+            : Number.isFinite(Number(savedAttendance?.total_minutes))
+            ? Math.round((Number(savedAttendance.total_minutes) / 60) * 10) / 10
+            : Math.round(((logoutDateTime - loginDateTime) / 3600000) * 10) / 10,
+        mails: savedAttendance?.mails ?? savedAttendance?.mails_count ?? Number(userAttendanceForm.mails),
+        data: savedAttendance?.data ?? savedAttendance?.data_count ?? Number(userAttendanceForm.data),
+        linkedin:
+          savedAttendance?.linkedin ?? savedAttendance?.linkedin_count ?? Number(userAttendanceForm.linkedin),
+        followUps:
+          savedAttendance?.followUps ?? savedAttendance?.follow_up_count ?? Number(userAttendanceForm.followUps),
+        loginTime:
+          savedAttendance?.loginTime ?? savedAttendance?.login_time ?? attendanceData.loginTime,
+        logoutTime:
+          savedAttendance?.logoutTime ?? savedAttendance?.logout_time ?? attendanceData.logoutTime,
+        totalMinutes:
+          savedAttendance?.total_minutes ?? savedAttendance?.totalMinutes ??
+          Math.round((logoutDateTime.getTime() - loginDateTime.getTime()) / 60000),
       }
-      setAttendance((prev) => [newRecord, ...prev])
-      
+
+      setAttendance((prev) => [normalizedRecord, ...prev])
+
       setUserAttendanceForm({
         date: '',
         login: '',
@@ -329,16 +405,44 @@ export default function UserDashboard() {
         toDate: userLeaveForm.to,
         reason: userLeaveForm.reason.trim(),
       }
-      
+
       const newLeave = await apiService.applyLeave(leaveData)
-      setLeaves((prev) => [newLeave, ...prev])
+      const leaveFrom = newLeave?.from ?? newLeave?.from_date ?? userLeaveForm.from
+      const leaveTo = newLeave?.to ?? newLeave?.to_date ?? userLeaveForm.to
+      const leaveDays = newLeave?.days ??
+        (leaveFrom && leaveTo
+          ? Math.max(
+              0,
+              Math.floor((new Date(leaveTo).getTime() - new Date(leaveFrom).getTime()) / (1000 * 60 * 60 * 24)) + 1,
+            )
+          : 0)
+
+      const normalizedLeave = {
+        id: newLeave?.id,
+        userId: newLeave?.userId ?? newLeave?.user_id ?? loggedUserId,
+        type: newLeave?.leaveType ?? newLeave?.leave_type ?? userLeaveForm.type,
+        from: leaveFrom,
+        to: leaveTo,
+        reason: newLeave?.reason ?? '',
+        days: leaveDays,
+        status: String(newLeave?.status ?? 'PENDING').toUpperCase(),
+      }
+      setLeaves((prev) => [normalizedLeave, ...prev])
       setUserLeaveForm({ type: 'CASUAL', from: '', to: '', reason: '' })
       setUserLeaveErrors({})
-      
-      // Refresh user data to update leave balance
-      const updatedUser = await apiService.getMe()
-      setLoggedUser(updatedUser)
-      localStorage.setItem('ciomogul_user', JSON.stringify(updatedUser))
+
+      // Refresh user data after successful leave apply
+      await refreshMyLeaves()
+      await refreshMyAttendance()
+
+      try {
+        const updatedUser = await apiService.getMe()
+        setLoggedUser(updatedUser)
+        localStorage.setItem('ciomogul_user', JSON.stringify(updatedUser))
+      } catch (error) {
+        console.warn('Failed to refresh current user after leave apply:', error)
+      }
+
       showToast('Leave request submitted successfully.', 'success')
     } catch (error) {
       console.error('Failed to apply leave:', error)
@@ -354,12 +458,15 @@ export default function UserDashboard() {
 
     try {
       await apiService.cancelLeave(leaveId)
-      setLeaves((prev) => prev.filter((leave) => leave.id !== leaveId))
-      
-      // Refresh user data to update leave balance
-      const updatedUser = await apiService.getMe()
-      setLoggedUser(updatedUser)
-      localStorage.setItem('ciomogul_user', JSON.stringify(updatedUser))
+      await refreshMyLeaves()
+      await refreshMyAttendance()
+      try {
+        const updatedUser = await apiService.getMe()
+        setLoggedUser(updatedUser)
+        localStorage.setItem('ciomogul_user', JSON.stringify(updatedUser))
+      } catch (error) {
+        console.warn('Failed to refresh current user after cancel leave:', error)
+      }
       showToast('Leave canceled successfully.', 'success')
     } catch (error) {
       console.error('Failed to cancel leave:', error)
@@ -744,10 +851,11 @@ export default function UserDashboard() {
             <div className="mt-3 rounded-lg bg-green-50 p-2 border border-green-200">
               <p className="text-xs text-green-800">📧 Need help? Contact Admin at <a href="mailto:info@theciomogul.com" className="underline font-semibold">info@theciomogul.com</a></p>
             </div>
-            <form className="mt-4 grid gap-3" onSubmit={handleUserLeaveSubmit}>
-              <div>
+            <form className="mt-4 grid gap-3 md:grid-cols-2" onSubmit={handleUserLeaveSubmit}>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-ink-400">Leave Type</label>
                 <select
-                  className="input-field"
+                  className="input-field w-full"
                   required
                   value={userLeaveForm.type}
                   onChange={(event) => setUserLeaveForm((prev) => ({ ...prev, type: event.target.value }))}
@@ -756,60 +864,55 @@ export default function UserDashboard() {
                   <option value="SICK">Sick Leave</option>
                   <option value="PAID">Paid Leave</option>
                 </select>
-                <p className="mt-1 text-xs text-ink-300">Select leave type based on your balance</p>
-                {userLeaveErrors.type && (
-                  <p className="mt-1 text-xs text-red-500">{userLeaveErrors.type}</p>
-                )}
+                {userLeaveErrors.type && <p className="text-xs text-red-500">{userLeaveErrors.type}</p>}
               </div>
-              <div>
+
+              <div className="space-y-1">
                 <label className="text-xs font-semibold text-ink-400">From Date</label>
                 <input
-                  className="input-field mt-1"
+                  className="input-field w-full"
                   type="date"
                   required
                   value={userLeaveForm.from}
                   onChange={(event) => setUserLeaveForm((prev) => ({ ...prev, from: event.target.value }))}
                 />
-                {userLeaveErrors.from && (
-                  <p className="mt-1 text-xs text-red-500">{userLeaveErrors.from}</p>
-                )}
+                {userLeaveErrors.from && <p className="text-xs text-red-500">{userLeaveErrors.from}</p>}
               </div>
-              <div>
+
+              <div className="space-y-1">
                 <label className="text-xs font-semibold text-ink-400">To Date</label>
                 <input
-                  className="input-field mt-1"
+                  className="input-field w-full"
                   type="date"
                   required
                   value={userLeaveForm.to}
                   onChange={(event) => setUserLeaveForm((prev) => ({ ...prev, to: event.target.value }))}
                 />
-                {userLeaveErrors.to && (
-                  <p className="mt-1 text-xs text-red-500">{userLeaveErrors.to}</p>
-                )}
+                {userLeaveErrors.to && <p className="text-xs text-red-500">{userLeaveErrors.to}</p>}
               </div>
-              <div>
+
+              <div className="space-y-1 md:col-span-2">
                 <label className="text-xs font-semibold text-ink-400">Reason (minimum 10 characters)</label>
                 <textarea
-                  className="input-field mt-1"
+                  className="input-field w-full"
                   placeholder="Provide detailed reason for leave..."
                   required
                   rows="3"
                   value={userLeaveForm.reason}
                   onChange={(event) => setUserLeaveForm((prev) => ({ ...prev, reason: event.target.value }))}
                 />
-                <p className="mt-1 text-xs text-ink-300">
-                  {userLeaveForm.reason.trim().length}/10 characters minimum
-                </p>
-                {userLeaveErrors.reason && (
-                  <p className="mt-1 text-xs text-red-500">{userLeaveErrors.reason}</p>
-                )}
-                {userLeaveErrors.general && (
-                  <p className="mt-1 text-xs text-red-500">{userLeaveErrors.general}</p>
-                )}
+                <div className="flex items-center justify-between text-xs text-ink-300">
+                  <span>{userLeaveForm.reason.trim().length}/10 characters minimum</span>
+                  <button
+                    type="submit"
+                    className="rounded-xl bg-ink-500 px-4 py-2 text-sm font-semibold text-white"
+                  >
+                    Apply Leave
+                  </button>
+                </div>
+                {userLeaveErrors.reason && <p className="text-xs text-red-500">{userLeaveErrors.reason}</p>}
+                {userLeaveErrors.general && <p className="text-xs text-red-500">{userLeaveErrors.general}</p>}
               </div>
-              <button className="rounded-xl bg-ink-500 px-4 py-2 text-sm font-semibold text-white">
-                Apply Leave
-              </button>
             </form>
           </section>
 
